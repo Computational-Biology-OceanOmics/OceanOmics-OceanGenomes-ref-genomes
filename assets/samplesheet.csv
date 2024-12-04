@@ -1,4 +1,1 @@
-sample,hifi_dir,hic_dir,version,date,tolid,taxid
-SAMPLE_HIC,/path/to/hifi/bam/files,/path/to/hic/fastq/files,v1,20240101,1,123456
-SAMPLE_NO_HIC,/path/to/hifi/bam/files,,v1,20240202,1,123456
-SAMPLE_FQ_HIFI,/path/to/hifi/fastq/files,/path/to/hic/fastq/files,v1,20240303,1,123456
+sample,hifi_dir,version,date,tolid,taxid
