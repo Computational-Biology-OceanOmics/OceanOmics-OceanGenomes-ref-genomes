@@ -17,10 +17,10 @@ You will need to create a samplesheet with information about the samples you wou
 The `sample` column must have unique values. The `hifi_dir` column must point to a directory containing .bam files or .fastq.gz files. The `hic_dir` column is optional. If it's used, it can be left blank, or it can point to a directory containing .fastq.gz files. The `version`, `tolid`, and `taxid` columns are mandatory. Below is an example:
 
 ```csv title="samplesheet.csv"
-sample,hifi_dir,hic_dir,version,date,tolid,taxid
-SAMPLE_HIC,/path/to/hifi/bam/files,/path/to/hic/fastq/files,v1,20240101,1,123456
-SAMPLE_NO_HIC,/path/to/hifi/bam/files,,v1,20240202,1,123456
-SAMPLE_FQ_HIFI,/path/to/hifi/fastq/files,/path/to/hic/fastq/files,v1,20240303,1,123456
+sample,hifi_dir,hic_dir,version,date,tolid,taxid,species
+SAMPLE_HIC,/path/to/hifi/bam/files,/path/to/hic/fastq/files,v1,20240101,1,123456,Ophthalmolepis lineolata
+SAMPLE_NO_HIC,/path/to/hifi/bam/files,,v1,20240202,1,123456,Ophthalmolepis lineolata
+SAMPLE_FQ_HIFI,/path/to/hifi/fastq/files,/path/to/hic/fastq/files,v1,20240303,1,123456,Ophthalmolepis lineolata
 ```
 
 An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
