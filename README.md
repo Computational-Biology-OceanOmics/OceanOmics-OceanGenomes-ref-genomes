@@ -53,10 +53,10 @@ First, prepare a samplesheet with your input data that looks as follows:
 `samplesheet.csv`:
 
 ```csv
-sample,hifi_dir,hic_dir,version,date,tolid,taxid
-OG88,hifi_bams/OG89,hic_fastqs/OG89,hic1,v240101,OG88,163129
-OG89,hifi_bams/OG89,,hifi1,v240202,OG88,163129
-OG90,hifi_fastqs/OG90,hic_fastqs/OG90,hic1,v240303,OG88,163129
+sample,hifi_dir,hic_dir,version,date,tolid,taxid,species
+OG88,hifi_bams/OG89,hic_fastqs/OG89,hic1,v240101,OG88,163129,Ophthalmolepis lineolata
+OG89,hifi_bams/OG89,,hifi1,v240202,OG88,163129,Ophthalmolepis lineolata
+OG90,hifi_fastqs/OG90,hic_fastqs/OG90,hic1,v240303,OG88,163129,Ophthalmolepis lineolata
 ```
 
 Each row represents a sample. The hifi_dir column must point to a directory that contains bam files or fastq files. The hic_dir column can point to a directory containing fastq files, however this column can be left blank if there isn't Hi-C data for this sample. Taxid refers to the NCBI taxon ID for that samples.
