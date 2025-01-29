@@ -60,6 +60,13 @@ include { paramsSummaryMap                               } from 'plugin/nf-valid
 include { paramsSummaryMultiqc                           } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML                         } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText                         } from '../subworkflows/local/utils_oceangenomesrefgenomes_pipeline'
+include { FCSGX_CLEANGENOME as FCSGX_CLEANGENOME_HAP1    } from '../modules/nf-core/fcsgx/cleangenome/main'
+include { FCSGX_CLEANGENOME as FCSGX_CLEANGENOME_HAP2    } from '../modules/nf-core/fcsgx/cleangenome/main'
+include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
+include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
+include { FQ_GZ_TO_FA                                    } from '../modules/local/fq_gz_to_fa/main'
+include { CAT_FASTA                                      } from '../modules/local/cat_fasta/main'
+
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -95,6 +102,14 @@ workflow REFGENOMES {
                 }
         }
 
+    ch_species = ch_samplesheet
+        .map {
+            meta ->
+                meta = meta[0]
+                meta.id = meta.sample + "_" + meta.date + "." + meta.version
+                return [ meta, meta.species ]
+        }
+
     //
     // MODULE: Run HiFiAdapterFilt
     //
@@ -102,6 +117,25 @@ workflow REFGENOMES {
         ch_hifi
     )
     ch_versions = ch_versions.mix(HIFIADAPTERFILT.out.versions.first())
+
+    FQ_GZ_TO_FA (
+        HIFIADAPTERFILT.out.reads
+    )
+
+    CAT_FASTA (
+        FQ_GZ_TO_FA.out.fa
+    )
+
+    MITOHIFI_FINDMITOREFERENCE (
+        ch_species
+    )
+
+    MITOHIFI_MITOHIFI (
+        CAT_FASTA.out.fa,
+        MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
+        MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
+        "r"
+    )
 
     //
     // MODULE: Run FastQC on HiFi fastqc files
@@ -361,6 +395,14 @@ workflow REFGENOMES {
     )
     ch_versions = ch_versions.mix(FCS_FCSGX_HAP2.out.versions.first())
 
+    //FCSGX_CLEANGENOME_HAP1 (
+    //    YAHS_HAP1.out.scaffolds_fasta.join(FCS_FCSGX_HAP1.out.fcs_gx_report)
+    //)
+
+    //FCSGX_CLEANGENOME_HAP2 (
+    //    YAHS_HAP2.out.scaffolds_fasta.join(FCS_FCSGX_HAP2.out.fcs_gx_report)
+    //)
+
     //
     // MODULE: Run Tiara
     //
@@ -443,8 +485,6 @@ workflow REFGENOMES {
                 return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
         }
 
-    busco_final_assemblies_ch.view()
-
     BUSCO_BUSCO_FINAL (
         busco_final_assemblies_ch,
         params.buscomode,
@@ -490,7 +530,7 @@ workflow REFGENOMES {
             }
              
     
-     COVERAGE_TRACKS (
+    COVERAGE_TRACKS (
         ch_coverage_tracks_in
     )
     ch_versions = ch_versions.mix(COVERAGE_TRACKS.out.versions.first())
