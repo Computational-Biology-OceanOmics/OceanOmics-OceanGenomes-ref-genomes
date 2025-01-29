@@ -4,8 +4,8 @@ process PRETEXTGRAPH {
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/pretextgraph:0.0.6--h4ac6f70_3':
-        'biocontainers/pretextgraph:0.0.6--h4ac6f70_3' }"
+        'https://depot.galaxyproject.org/singularity/pretextgraph:0.0.7--h9948957_1':
+        'biocontainers/pretextgraph:0.0.7--h9948957_1' }"
 
     input:
     tuple val(meta), path(pretext_map), path(bedgraph)
