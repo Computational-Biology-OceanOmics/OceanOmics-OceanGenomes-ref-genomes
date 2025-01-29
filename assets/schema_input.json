@@ -42,8 +42,12 @@
             "taxid": {
                 "type": "string",
                 "meta": ["taxid"]
+            },
+            "species": {
+                "type": "string",
+                "meta": ["species"]
             }
         },
-        "required": ["sample", "hifi_dir", "version", "date", "tolid", "taxid"]
+        "required": ["sample", "hifi_dir", "version", "date", "tolid", "taxid", "species"]
     }
 }
