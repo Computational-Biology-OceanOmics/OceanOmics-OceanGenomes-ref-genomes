@@ -4,8 +4,8 @@ process TIDK_EXPLORE {
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/tidk:0.2.41--hdbdd923_0':
-        'biocontainers/tidk:0.2.41--hdbdd923_0' }"
+        'docker://quay.io/biocontainers/tidk:0.2.1--h87f3376_1':
+        'biocontainers/tidk:0.2.41--hdbdd923 _0' }"
 
     input:
     tuple val(meta), path(cat_file)

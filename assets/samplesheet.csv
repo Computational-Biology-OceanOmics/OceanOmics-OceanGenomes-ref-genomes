@@ -1,1 +1,2 @@
-sample,hifi_dir,version,date,tolid,taxid
+sample,hifi_dir,hic_dir,version,date,tolid,taxid,species
+OG837,/scratch/pawsey0812/lhuet/assembly/OG837/hifi/,/scratch/pawsey0812/lhuet/assembly/OG837/hic/,hic1,v240521,OG837,195338,Urogymnus asperrimus

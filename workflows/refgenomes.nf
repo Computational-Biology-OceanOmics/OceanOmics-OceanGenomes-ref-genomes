@@ -20,8 +20,8 @@ include { GFASTATS as GFASTATS_HAP2                      } from '../modules/nf-c
 include { BUSCO_BUSCO                                    } from '../modules/nf-core/busco/busco/main'
 include { BUSCO_GENERATEPLOT                             } from '../modules/nf-core/busco/generateplot/main'
 include { MERQURY                                        } from '../modules/nf-core/merqury/main'
-include { OMNIC as OMNIC_HAP1                            } from '../subworkflows/local/omnic/main'
-include { OMNIC as OMNIC_HAP2                            } from '../subworkflows/local/omnic/main'
+include { OMNIC as OMNIC_HAP1                            } from '../modules/local/omnic/main'
+include { OMNIC as OMNIC_HAP2                            } from '../modules/local/omnic/main'
 include { YAHS as YAHS_HAP1                              } from '../modules/nf-core/yahs/main'
 include { YAHS as YAHS_HAP2                              } from '../modules/nf-core/yahs/main'
 include { FCS_FCSGX as FCS_FCSGX_HAP1                    } from '../modules/nf-core/fcs/fcsgx/main'
@@ -38,9 +38,9 @@ include { CAT_SCAFFOLDS                                  } from '../modules/loca
 include { TAR                                            } from '../modules/local/tar/main'
 include { COVERAGE_TRACKS                                } from '../subworkflows/local/coverage_tracks/main'
 include { TIDK_EXPLORE                                   } from '../modules/nf-core/tidk/explore/main'
-include { OMNIC as OMNIC_HAP1_FINAL                      } from '../subworkflows/local/omnic/main'
-include { OMNIC as OMNIC_HAP2_FINAL                      } from '../subworkflows/local/omnic/main'
-include { OMNIC as OMNIC_DUAL_HAP                        } from '../subworkflows/local/omnic/main'
+include { OMNIC as OMNIC_HAP1_FINAL                      } from '../modules/local/omnic/main'
+include { OMNIC as OMNIC_HAP2_FINAL                      } from '../modules/local/omnic/main'
+include { OMNIC as OMNIC_DUAL_HAP                        } from '../modules/local/omnic/main'
 include { PRETEXTMAP as PRETEXTMAP_HAP_1                 } from '../modules/nf-core/pretextmap/main'
 include { PRETEXTMAP as PRETEXTMAP_HAP_2                 } from '../modules/nf-core/pretextmap/main'
 include { PRETEXTMAP as PRETEXTMAP_DUAL_HAP              } from '../modules/nf-core/pretextmap/main'
@@ -347,21 +347,23 @@ workflow REFGENOMES {
 
     OMNIC_HAP1 (
         ch_omnic_hap1_in,
-        "hap1"
+        "hap1",
+        params.tempdir
     )
     ch_versions = ch_versions.mix(OMNIC_HAP1.out.versions.first())
 
     OMNIC_HAP2 (
         ch_omnic_hap2_in,
-        "hap2"
+        "hap2",
+        params.tempdir
     )
     ch_versions = ch_versions.mix(OMNIC_HAP2.out.versions.first())
 
     //
     // MODULE: Run Yahs
     //
-    ch_yahs_hap1_in = OMNIC_HAP1.out.bam.join(GFASTATS_HAP1.out.assembly).join(OMNIC_HAP1.out.fai)
-    ch_yahs_hap2_in = OMNIC_HAP2.out.bam.join(GFASTATS_HAP2.out.assembly).join(OMNIC_HAP2.out.fai)
+    ch_yahs_hap1_in = OMNIC_HAP1.out.omnic_bam.join(GFASTATS_HAP1.out.assembly).join(OMNIC_HAP1.out.omnic_fai)
+    ch_yahs_hap2_in = OMNIC_HAP2.out.omnic_bam.join(GFASTATS_HAP2.out.assembly).join(OMNIC_HAP2.out.omnic_fai)
     
 
 
@@ -395,25 +397,25 @@ workflow REFGENOMES {
     )
     ch_versions = ch_versions.mix(FCS_FCSGX_HAP2.out.versions.first())
 
-    //FCSGX_CLEANGENOME_HAP1 (
-    //    YAHS_HAP1.out.scaffolds_fasta.join(FCS_FCSGX_HAP1.out.fcs_gx_report)
-    //)
+    FCSGX_CLEANGENOME_HAP1 (
+        YAHS_HAP1.out.scaffolds_fasta.join(FCS_FCSGX_HAP1.out.fcs_gx_report)
+    )
 
-    //FCSGX_CLEANGENOME_HAP2 (
-    //    YAHS_HAP2.out.scaffolds_fasta.join(FCS_FCSGX_HAP2.out.fcs_gx_report)
-    //)
+    FCSGX_CLEANGENOME_HAP2 (
+        YAHS_HAP2.out.scaffolds_fasta.join(FCS_FCSGX_HAP2.out.fcs_gx_report)
+    )
 
     //
     // MODULE: Run Tiara
     //
     TIARA_TIARA_HAP1 (
-        YAHS_HAP1.out.scaffolds_fasta,
+        FCSGX_CLEANGENOME_HAP1.out.cleaned,
         ".1.yahs.hap1.tiara"
     )
     ch_versions = ch_versions.mix(TIARA_TIARA_HAP1.out.versions.first())
 
     TIARA_TIARA_HAP2 (
-        YAHS_HAP2.out.scaffolds_fasta,
+        FCSGX_CLEANGENOME_HAP2.out.cleaned,
         ".1.yahs.hap2.tiara"
     )
     ch_versions = ch_versions.mix(TIARA_TIARA_HAP2.out.versions.first())
@@ -421,8 +423,8 @@ workflow REFGENOMES {
     //
     // MODULE: Run BBmap filterbyname
     //
-    ch_bbmap_filterbyname_hap1_in = YAHS_HAP1.out.scaffolds_fasta.join(TIARA_TIARA_HAP1.out.classifications)
-    ch_bbmap_filterbyname_hap2_in = YAHS_HAP2.out.scaffolds_fasta.join(TIARA_TIARA_HAP2.out.classifications)
+    ch_bbmap_filterbyname_hap1_in = FCSGX_CLEANGENOME_HAP1.out.cleaned.join(TIARA_TIARA_HAP1.out.classifications)
+    ch_bbmap_filterbyname_hap2_in = FCSGX_CLEANGENOME_HAP2.out.cleaned.join(TIARA_TIARA_HAP2.out.classifications)
 
     BBMAP_FILTERBYNAME_HAP1 (
         ch_bbmap_filterbyname_hap1_in,
@@ -566,19 +568,22 @@ workflow REFGENOMES {
 
    OMNIC_HAP1_FINAL (
         ch_omnic_hap1_in,
-        "hap1"
+        "hap1",
+        params.tempdir
          )
   ch_versions = ch_versions.mix(OMNIC_HAP1_FINAL.out.versions.first())
 
       OMNIC_HAP2_FINAL (
        ch_omnic_hap2_in,
-        "hap2"
+        "hap2",
+        params.tempdir
     )
     ch_versions = ch_versions.mix(OMNIC_HAP2_FINAL.out.versions.first())
 
     OMNIC_DUAL_HAP (
         ch_omic_dual_in,
-        "dual"
+        "dual",
+        params.tempdir
     )
 
     ch_versions = ch_versions.mix(OMNIC_DUAL_HAP.out.versions.first())
@@ -587,26 +592,26 @@ workflow REFGENOMES {
     // MODULE: Run Pretext Map
     ///
 
-    PRETEXTMAP_HAP_1 (OMNIC_HAP1_FINAL.out.bam,
+    PRETEXTMAP_HAP_1 (OMNIC_HAP1_FINAL.out.omnic_bam,
                         "hap1",
                         "2.tiara.")
     
     ch_versions = ch_versions.mix(PRETEXTMAP_HAP_1.out.versions.first())
     
-    PRETEXTMAP_HAP_2 (OMNIC_HAP2_FINAL.out.bam,
+    PRETEXTMAP_HAP_2 (OMNIC_HAP2_FINAL.out.omnic_bam,
                     "hap2",
                     "2.tiara")
     
     ch_versions = ch_versions.mix(PRETEXTMAP_HAP_1.out.versions.first())
     
-    PRETEXTMAP_DUAL_HAP (OMNIC_DUAL_HAP.out.bam, 
+    PRETEXTMAP_DUAL_HAP (OMNIC_DUAL_HAP.out.omnic_bam, 
                     "dual",
                     "2.tiara")
     
     ch_versions = ch_versions.mix(PRETEXTMAP_HAP_1.out.versions.first())
 
 
-    PRETEXTMAP_HIGH_RES (OMNIC_DUAL_HAP.out.bam, 
+    PRETEXTMAP_HIGH_RES (OMNIC_DUAL_HAP.out.omnic_bam, 
                     "dual-hi-res",
                     "2.tiara")
     

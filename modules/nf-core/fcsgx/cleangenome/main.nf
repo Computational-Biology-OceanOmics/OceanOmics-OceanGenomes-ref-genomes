@@ -23,8 +23,8 @@ process FCSGX_CLEANGENOME {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    gx \\
-        clean-genome \\
+    gunzip ${fasta}
+    gx clean-genome \\
         --input ${fasta} \\
         --action-report ${fcsgx_report} \\
         --output ${prefix}.cleaned.fasta \\
