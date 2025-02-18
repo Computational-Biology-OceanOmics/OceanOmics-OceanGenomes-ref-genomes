@@ -23,12 +23,14 @@ process TIDK_EXPLORE {
     """
     tidk \\
         explore \\
+        --fasta $cat_file \\
         $args \\
-        $cat_file \\
-        > ${prefix}.telomeric_locations.bedgraph
+        --dir . \\
+        --extension bedgraph \\
+        --output ${prefix}.telomeric_locations.bedgraph
 
 
-    sort -k1,1 -k2,2n -o "${prefix}_sorted_telomeric_locations.bedgraph" "${prefix}.telomeric_locations.bedgraph"
+    sort -k1,1 -k2,2n -o "${prefix}_sorted_telomeric_locations.bedgraph" "${prefix}.telomeric_locations.bedgraph.txt"
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

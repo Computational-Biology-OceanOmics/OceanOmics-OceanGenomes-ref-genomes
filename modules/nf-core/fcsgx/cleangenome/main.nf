@@ -3,10 +3,9 @@ process FCSGX_CLEANGENOME {
     tag "$meta.id"
     label 'process_low'
 
-    conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/ncbi-fcs-gx:0.5.4--h4ac6f70_1':
-        'biocontainers/ncbi-fcs-gx:0.5.4--h4ac6f70_1' }"
+        'https://ftp.ncbi.nlm.nih.gov/genomes/TOOLS/FCS/releases/0.4.0/fcs-gx.sif':
+        'docker.io/ncbi/fcs-gx:0.4.0' }"
 
     input:
     tuple val(meta), path(fasta), path(fcsgx_report)
@@ -23,7 +22,6 @@ process FCSGX_CLEANGENOME {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    gunzip ${fasta}
     gx clean-genome \\
         --input ${fasta} \\
         --action-report ${fcsgx_report} \\
