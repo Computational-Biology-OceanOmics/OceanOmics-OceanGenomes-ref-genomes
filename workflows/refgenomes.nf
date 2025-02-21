@@ -10,9 +10,9 @@ include { FASTQC as FASTQC_HIC                           } from '../modules/nf-c
 include { MERYL_COUNT                                    } from '../modules/nf-core/meryl/count/main'
 include { MERYL_HISTOGRAM                                } from '../modules/nf-core/meryl/histogram/main'
 include { GENOMESCOPE2                                   } from '../modules/nf-core/genomescope2/main'
-//include { HIFIASM1 as HIFIASM_SOLO                       } from '../modules/local/hifiasm1/main'
-//include { GFASTATS as GFASTATS_HIFI_PRIMARY              } from '../modules/nf-core/gfastats/main'
-//include { GFASTATS as GFASTATS_HIFI_ALT                  } from '../modules/nf-core/gfastats/main'
+include { HIFIASM1 as HIFIASM_SOLO                       } from '../modules/local/hifiasm1/main'
+include { GFASTATS as GFASTATS_HIFI_PRIMARY              } from '../modules/nf-core/gfastats/main'
+include { GFASTATS as GFASTATS_HIFI_ALT                  } from '../modules/nf-core/gfastats/main'
 include { CAT_HIC                                        } from '../modules/local/cat_hic/main'
 include { HIFIASM                                        } from '../modules/nf-core/hifiasm/main'
 include { GFASTATS as GFASTATS_HAP1                      } from '../modules/nf-core/gfastats/main'
@@ -40,7 +40,7 @@ include { COVERAGE_TRACKS                                } from '../subworkflows
 include { TIDK_EXPLORE                                   } from '../modules/nf-core/tidk/explore/main'
 include { OMNIC as OMNIC_HAP1_FINAL                      } from '../modules/local/omnic/main'
 include { OMNIC as OMNIC_HAP2_FINAL                      } from '../modules/local/omnic/main'
-include { OMNIC as OMNIC_DUAL_HAP                        } from '../modules/local/omnic/main'
+include { OMNIC as OMNIC_DUAL_HAP                        } from '../modules/local/omnic_dual/main'
 include { PRETEXTMAP as PRETEXTMAP_HAP_1                 } from '../modules/nf-core/pretextmap/main'
 include { PRETEXTMAP as PRETEXTMAP_HAP_2                 } from '../modules/nf-core/pretextmap/main'
 include { PRETEXTMAP as PRETEXTMAP_DUAL_HAP              } from '../modules/nf-core/pretextmap/main'
@@ -62,7 +62,7 @@ include { softwareVersionsToYAML                         } from '../subworkflows
 include { methodsDescriptionText                         } from '../subworkflows/local/utils_oceangenomesrefgenomes_pipeline'
 include { FCSGX_CLEANGENOME as FCSGX_CLEANGENOME_HAP1    } from '../modules/nf-core/fcsgx/cleangenome/main'
 include { FCSGX_CLEANGENOME as FCSGX_CLEANGENOME_HAP2    } from '../modules/nf-core/fcsgx/cleangenome/main'
-//include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
+include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
 include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
 include { FQ_GZ_TO_FA                                    } from '../modules/local/fq_gz_to_fa/main'
 include { CAT_FASTA                                      } from '../modules/local/cat_fasta/main'
@@ -110,6 +110,13 @@ workflow REFGENOMES {
                 return [ meta, meta.species ]
         }
 
+    ch_mito = ch_samplesheet
+        .map { meta ->
+            meta = meta[0]
+            return [ meta, meta.mito, meta.sample, meta.date ]
+    }
+
+
     //
     // MODULE: Run HiFiAdapterFilt
     //
@@ -130,12 +137,15 @@ workflow REFGENOMES {
         ch_species
     )
 
-   // MITOHIFI_MITOHIFI (
-  //      CAT_FASTA.out.fa,
-  //      MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
-  ////      MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
-  //      "r"
-  //  )
+    MITOHIFI_MITOHIFI (
+        ch_mito,
+        CAT_FASTA.out.fa,
+        MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
+        MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
+        "r",
+        "hifi",
+        "v3mitohifi"
+    )
 
     //
     // MODULE: Run FastQC on HiFi fastqc files
@@ -178,46 +188,46 @@ workflow REFGENOMES {
     // MODULE: Run hifi only assembly 
     //
 
-   // HIFIASM_SOLO( 
-    //    HIFIADAPTERFILT.out.reads,
-    //    "0.hifiasm"
-    //)
+    HIFIASM_SOLO( 
+        HIFIADAPTERFILT.out.reads,
+        "0.hifiasm"
+    )
 
     ///
     /// MODULE: gfa stats primary and alternate
     ///
-    //ch_gfastats_hifi_only_primary = HIFIASM_SOLO.out.primary_contigs.join(GENOMESCOPE2.out.summary)
-    //ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
+    ch_gfastats_hifi_only_primary = HIFIASM_SOLO.out.primary_contigs.join(GENOMESCOPE2.out.summary)
+    ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
 
 
-   // GFASTATS_HIFI_PRIMARY (
-    //    ch_gfastats_hifi_only_primary,
-    //    "fasta",
-    //    "",
-    //    "p_ctg",
-    //    "0.hifiasm",
-    //    [],
-   //     [],
-    //    [],
-    //    []
+    GFASTATS_HIFI_PRIMARY (
+        ch_gfastats_hifi_only_primary,
+        "fasta",
+        "",
+        "p_ctg",
+        "0.hifiasm",
+        [],
+        [],
+        [],
+        []
 
-   // )
-   //     ch_versions = ch_versions.mix(GFASTATS_HIFI_PRIMARY.out.versions.first())
+    )
+        ch_versions = ch_versions.mix(GFASTATS_HIFI_PRIMARY.out.versions.first())
 
-   // ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
+    ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
 
-   //GFASTATS_HIFI_ALT (
-   //     ch_gfastats_hifi_only_alternate,
-   //     "fasta",
-   //     "",
-    //    "a_ctg",
-    //    "0.hifiasm",
-    //    [],
-    //    [],
-   //     [],
-   //     []
-   // )
-   // ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
+    GFASTATS_HIFI_ALT (
+        ch_gfastats_hifi_only_alternate,
+        "fasta",
+        "",
+        "a_ctg",
+        "0.hifiasm",
+        [],
+        [],
+        [],
+        []
+    )
+    ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
 
 
     //

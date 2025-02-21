@@ -1,7 +1,2 @@
 sample,hifi_dir,hic_dir,version,date,tolid,taxid,species
-OG695,/scratch/pawsey0812/lhuet/refgen/OG695/hifi,/scratch/pawsey0812/lhuet/refgen/OG695/hic,hic1,240520,OG695,129077,Tylosurus crocodilus
-OG678,/scratch/pawsey0812/lhuet/refgen/OG678/hifi,/scratch/pawsey0812/lhuet/refgen/OG678/hic,hic1,240327,OG6787,5044,Zanclus cornutus
-OG755,/scratch/pawsey0812/lhuet/refgen/OG755/hifi,/scratch/pawsey0812/lhuet/refgen/OG755/hic,hic1,240821,OG755,1474811,Centropyge colini
-OG757,/scratch/pawsey0812/lhuet/refgen/OG757/hifi,/scratch/pawsey0812/lhuet/refgen/OG757/hic,hic1,241018,OG757,109718,Centropyge
-OG787,/scratch/pawsey0812/lhuet/refgen/OG787/hifi,/scratch/pawsey0812/lhuet/refgen/OG787/hic,hic1,240927,OG787,586788,Centropyge heraldi
-OG860,/scratch/pawsey0812/lhuet/refgen/OG860/hifi,/scratch/pawsey0812/lhuet/refgen/OG860/hic,hic1,240927,OG860,303720,Brachaluteres jacksonianus
+OG910,/scratch/pawsey0812/lhuet/OG910/hifi,/scratch/pawsey0812/lhuet/OG910/hic,hic1,241127,OG910,443688,Choerodon rubescens
