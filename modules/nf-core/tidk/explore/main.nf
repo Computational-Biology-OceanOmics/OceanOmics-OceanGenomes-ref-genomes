@@ -12,6 +12,7 @@ process TIDK_EXPLORE {
 
     output:
     tuple val(meta), path("*sorted_telomeric_locations.bedgraph") , emit: telomer_sorted
+    tuple val(meta), path("*telomeric_locations.bedgraph")
     path "versions.yml"                         , emit: versions
 
     when:

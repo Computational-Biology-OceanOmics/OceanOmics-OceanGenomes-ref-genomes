@@ -39,7 +39,7 @@ busco_db=actinopterygii_odb10
 
 # Define paths
 RUNDIR=$(pwd)
-LPATH=/software/projects/pawsey0812/rjedwards/compleasmdb
+LPATH=/scratch/pawsey0812/lhuet/buscodb
 SLIMSUITE=/software/projects/pawsey0812/rjedwards/slimsuite
 
 echo "sample: $sample"
@@ -50,8 +50,8 @@ echo "BUSCO database: $busco_db"
 #---------------
 # Move and rename assemblies
 echo "Copying final assemblies to chromsyn directory... "
-cp ../05-decontamination/final-fastas/${sample}_${ver}.hap1.scaffolds_1.fa .
-cp ../05-decontamination/final-fastas/${sample}_${ver}.hap2.scaffolds_2.fa .
+cp ../05-decontamination/final-fastas/${sample}_${ver}.2.tiara.hap1_scaffolds.fa .
+cp ../05-decontamination/final-fastas/${sample}_${ver}.2.tiara.hap2_scaffolds.fa .
 
 #---------------
 # Run compleasm
@@ -64,7 +64,7 @@ for GENOME in ../*.fa; do
 
   # Run Compleasm
   if [ ! -f "$RUN/run_$busco_db/full_table.tsv" ]; then
-    singularity run $SING/compleasm:0.2.2.sif compleasm run -a $GENOME -o $RUN -t 96 -l $busco_db -L $LPATH
+    singularity run $SING/compleasm:0.2.6.sif compleasm run -a $GENOME -o $RUN -t 96 -l $busco_db -L $LPATH
     
     # Cleanup Compleasm
     cp -v $RUN/summary.txt $GENBASE.$busco_db.summary.txt
