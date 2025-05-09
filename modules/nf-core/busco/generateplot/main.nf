@@ -3,7 +3,11 @@ process BUSCO_GENERATEPLOT {
     label 'process_low'
 
     conda "${moduleDir}/environment.yml"
+<<<<<<< HEAD
     container 'docker://ezlabgva/busco:v5.7.1_cv1'
+=======
+    container 'docker://quay.io/biocontainers/busco:5.8.3--pyhdfd78af_0'
+>>>>>>> dd2184d (updated scripts and containers and added mitohifi)
 
     input:
     tuple val(meta), path(short_summary_txt, stageAs: 'busco/*')

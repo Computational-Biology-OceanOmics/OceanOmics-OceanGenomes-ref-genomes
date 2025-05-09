@@ -4,8 +4,13 @@ process FCSGX_CLEANGENOME {
     label 'process_low'
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+<<<<<<< HEAD
         'https://ftp.ncbi.nlm.nih.gov/genomes/TOOLS/FCS/releases/0.4.0/fcs-gx.sif':
         'docker.io/ncbi/fcs-gx:0.4.0' }"
+=======
+        'https://depot.galaxyproject.org/singularity/ncbi-fcs-gx:0.5.5--h9948957_0':
+        'docker.io/ncbi/fcs-gx:0.5.5' }"
+>>>>>>> dd2184d (updated scripts and containers and added mitohifi)
 
     input:
     tuple val(meta), path(fasta), path(fcsgx_report)

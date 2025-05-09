@@ -1,2 +1,6 @@
 sample,hifi_dir,hic_dir,version,date,tolid,taxid,species
+<<<<<<< HEAD
 OG837,/scratch/pawsey0812/lhuet/assembly/OG837/hifi/,/scratch/pawsey0812/lhuet/assembly/OG837/hic/,hic1,v240521,OG837,195338,Urogymnus asperrimus
+=======
+OG85,/scratch/pawsey0964/lhuet/ref-gen/re-run/OG85/hifi,/scratch/pawsey0964/lhuet/ref-gen/re-run/OG85/hic,hic1,v240927,OG85,30871,Serranidae
+>>>>>>> dd2184d (updated scripts and containers and added mitohifi)

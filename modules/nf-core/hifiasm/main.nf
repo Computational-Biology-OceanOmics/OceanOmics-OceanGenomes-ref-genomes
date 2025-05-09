@@ -4,7 +4,11 @@ process HIFIASM {
 
     conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+<<<<<<< HEAD
         'https://depot.galaxyproject.org/singularity/hifiasm:0.19.8--h43eeafb_0' :
+=======
+        'docker://quay.io/biocontainers/hifiasm:0.25.0--h5ca1c30_0' :
+>>>>>>> dd2184d (updated scripts and containers and added mitohifi)
         'biocontainers/hifiasm:0.19.8--h43eeafb_0' }"
 
     input:

@@ -1,3 +1,10 @@
+<<<<<<< HEAD
+=======
+FASTQC_HIFI:
+  fastqc: 0.12.1
+HIFIADAPTERFILT:
+  HiFiAdapterFilt: 2.0.0
+>>>>>>> dd2184d (updated scripts and containers and added mitohifi)
 Workflow:
     Computational-Biology-OceanOmics/OceanGenomes-refgenomes: v1.0dev
     Nextflow: 24.04.3
