@@ -2,12 +2,13 @@ import psycopg2
 import pandas as pd
 import numpy as np  # Required for handling infinity values
 
+
 # PostgreSQL connection parameters
 db_params = {
     'dbname': 'oceanomics',
     'user': 'postgres',
     'password': 'oceanomics',
-    'host': '115.146.85.41',
+    'host': '203.101.227.69',
     'port': 5432
 }
 
@@ -29,8 +30,8 @@ if 'sample' in busco.columns:
     # Split 'sample' into 4 new columns
     busco['og_id'] = busco['sample'].str.split('.').str[0].str.split('_').str[0]
     busco['seq_date'] = busco['sample'].str.split('.').str[0].str.split('_').str[1].str.lstrip('v')
-    busco['stage'] = busco['sample'].str.split('.').str[2]
-    busco['haplotype'] =  busco['sample'].str.extract(r'hap(\d)').astype(int)
+    busco['stage'] = busco['sample'].str.split('.').str[2].astype(int)
+    busco['haplotype'] = busco['sample'].str.split('.').str[4].str.split('_').str[0]
 
 
     # Save the updated DataFrame back to a tab-delimited file
@@ -62,15 +63,16 @@ try:
         # UPSERT: Insert if not exists, otherwise update
         upsert_query = """
         INSERT INTO ref_genomes (
-            og_id, seq_date, stage, haplotype, complete, single_copy, multi_copy, fragmented,
+            og_id, seq_date, stage, haplotype, dataset, complete, single_copy, multi_copy, fragmented,
             missing, n_markers, internal_stop_codon_percent, scaffold_n50_bus, contigs_n50_bus, percent_gaps, number_of_scaffolds
         )
         VALUES (
-            %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(complete)s, %(single_copy)s, %(multi_copy)s, %(fragmented)s,
+            %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(dataset)s, %(complete)s, %(single_copy)s, %(multi_copy)s, %(fragmented)s,
             %(missing)s, %(n_markers)s, %(internal_stop_codon_percent)s, %(scaffold_n50_bus)s, %(contigs_n50_bus)s, %(percent_gaps)s,  
             %(number_of_scaffolds)s
         )
         ON CONFLICT (og_id, seq_date, stage, haplotype) DO UPDATE SET
+            dataset = EXCLUDED.dataset,
             complete = EXCLUDED.complete,
             single_copy = EXCLUDED.single_copy,
             multi_copy = EXCLUDED.multi_copy,
@@ -88,6 +90,7 @@ try:
             "seq_date": row_dict["seq_date"],  # TEXT or DATE
             "stage": row_dict["stage"],  # TEXT or DATE
             "haplotype": row_dict["haplotype"],  # TEXT or DATE
+            "dataset": row_dict["dataset"],  # TEXT or DATE
             "complete": float(row_dict["complete"]) if row_dict["complete"] not in [None, ""] else None,  # FLOAT
             "single_copy": float(row_dict["single_copy"]) if row_dict["single_copy"] not in [None, ""] else None,  # FLOAT
             "multi_copy": float(row_dict["multi_copy"]) if row_dict["multi_copy"] not in [None, ""] else None,  # FLOAT

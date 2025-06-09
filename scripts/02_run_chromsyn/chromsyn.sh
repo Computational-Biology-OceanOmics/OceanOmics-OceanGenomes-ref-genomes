@@ -39,7 +39,7 @@ busco_db=actinopterygii_odb10
 
 # Define paths
 RUNDIR=$(pwd)
-LPATH=/scratch/pawsey0812/lhuet/buscodb
+LPATH=/scratch/pawsey0964/lhuet/busco_db
 SLIMSUITE=/software/projects/pawsey0812/rjedwards/slimsuite
 
 echo "sample: $sample"
@@ -152,4 +152,4 @@ singularity run $SING/depthsizer:v1.9.0.sif Rscript $SLIMSUITE/libraries/r/chrom
 
 # ---------------
 # Backup image to Acacia
-rclone copy $sample.hapsyn.pdf pawsey0812:oceanomics-assemblies/${sample}/${sample}_${ver}/chromsyn
+rclone copy $sample.hapsyn.pdf pawsey0964:oceanomics-refassemblies/${sample}/${sample}_${ver}/chromsyn

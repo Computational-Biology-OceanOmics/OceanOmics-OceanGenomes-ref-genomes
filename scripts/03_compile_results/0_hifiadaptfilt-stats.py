@@ -2,7 +2,7 @@ import os
 import csv
 
 # Define the base directory where the samples are stored
-base_dir = "/scratch/pawsey0964/lhuet/ref-gen"  # Change this to the correct path
+base_dir = "/scratch/pawsey0964/lhuet/refgenomes/"  # Change this to the correct path
 output_tsv = "hifiadaptorfilt_stats_summary.tsv"
 
 # Open the output TSV file for writing

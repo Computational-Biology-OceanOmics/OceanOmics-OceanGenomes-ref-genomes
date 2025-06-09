@@ -71,8 +71,4 @@ process GFASTATS {
         gfastats: \$( gfastats -v | sed '1!d;s/.*v//' )
     END_VERSIONS
     """
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> dd2184d (updated scripts and containers and added mitohifi)

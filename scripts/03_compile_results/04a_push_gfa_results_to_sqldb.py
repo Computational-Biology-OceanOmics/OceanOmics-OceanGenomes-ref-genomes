@@ -7,7 +7,7 @@ db_params = {
     'dbname': 'oceanomics',
     'user': 'postgres',
     'password': 'oceanomics',
-    'host': '115.146.85.41',
+    'host': '203.101.227.69',
     'port': 5432
 }
 
@@ -28,8 +28,8 @@ if 'filename' in gfa.columns:
     # Split 'filename' into 4 new columns
     gfa['og_id'] = gfa['filename'].str.split('.').str[0].str.split('_').str[0]
     gfa['seq_date'] = gfa['filename'].str.split('.').str[0].str.split('_').str[1].str.lstrip('v')
-    gfa['stage'] = gfa['filename'].str.split('.').str[2]
-    gfa['haplotype'] =  gfa['filename'].str.extract(r'hap(\d)').astype(int)
+    gfa['stage'] = gfa['filename'].str.split('.').str[2].astype(int)
+    gfa['haplotype'] =  gfa['filename'].str.split('.').str[4].str.split('_').str[0]
 
 
     # Save the updated DataFrame back to a tab-delimited file

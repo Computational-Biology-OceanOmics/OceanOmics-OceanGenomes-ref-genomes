@@ -1,11 +1,11 @@
 #!/bin/bash
 # Compile OMNIC mapping stats with stage information
-
+base_dir="/scratch/pawsey0964/lhuet/refgenomes" 
 # Print header
 echo -e "sample\tstage\thaplotype\ttotal\ttotal_unmapped\ttotal_single_sided_mapped\ttotal_mapped\ttotal_dups\ttotal_nodups\tcis\ttrans" > final_omnic_stats_report.txt
 
 # Find all *.stats.txt files
-stats_files=$(find . -name "*.stats.txt")
+stats_files=$(find $base_dir/OG* -name "*.stats.txt")
 
 # Process each stats.txt file
 for file in $stats_files; do

@@ -5,11 +5,7 @@ process BUSCO_BUSCO {
 
    conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-<<<<<<< HEAD
-        'docker://ezlabgva/busco:v5.7.1_cv1':
-=======
         'docker://quay.io/biocontainers/busco:5.8.3--pyhdfd78af_0':
->>>>>>> dd2184d (updated scripts and containers and added mitohifi)
         'biocontainers/busco:5.7.1--pyhdfd78af_0' }"
 
     input:

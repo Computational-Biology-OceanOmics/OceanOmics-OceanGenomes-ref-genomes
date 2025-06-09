@@ -12,11 +12,7 @@ process MERYL_COUNT {
     val kvalue
 
     output:
-<<<<<<< HEAD
-    tuple val(meta), path("*.meryldb"), emit: meryl_db
-=======
     tuple val(meta), path("*.meryl"), emit: meryl_db
->>>>>>> dd2184d (updated scripts and containers and added mitohifi)
     path "versions.yml"               , emit: versions
 
     when:
@@ -32,11 +28,7 @@ process MERYL_COUNT {
         memory=\$(echo $task.memory | sed 's/GB//g') \\
         $args \\
         $reads \\
-<<<<<<< HEAD
-        output ${meta.id}.meryldb
-=======
         output ${meta.id}.meryl
->>>>>>> dd2184d (updated scripts and containers and added mitohifi)
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
