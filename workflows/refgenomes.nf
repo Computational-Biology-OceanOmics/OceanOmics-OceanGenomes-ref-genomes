@@ -22,14 +22,8 @@ include { BUSCO_GENERATEPLOT                             } from '../modules/nf-c
 include { MERQURY                                        } from '../modules/nf-core/merqury/main'
 include { OMNIC as OMNIC_HAP1                            } from '../modules/local/omnic/main'
 include { OMNIC as OMNIC_HAP2                            } from '../modules/local/omnic/main'
-include { YAHS as YAHS_HAP1                              } from '../modules/nf-core/yahs/main'
-include { YAHS as YAHS_HAP2                              } from '../modules/nf-core/yahs/main'
-include { FCS_FCSGX as FCS_FCSGX_HAP1                    } from '../modules/nf-core/fcs/fcsgx/main'
-include { FCS_FCSGX as FCS_FCSGX_HAP2                    } from '../modules/nf-core/fcs/fcsgx/main'
-include { TIARA_TIARA as TIARA_TIARA_HAP1                } from '../modules/nf-core/tiara/tiara/main'
-include { TIARA_TIARA as TIARA_TIARA_HAP2                } from '../modules/nf-core/tiara/tiara/main'
-include { BBMAP_FILTERBYNAME as BBMAP_FILTERBYNAME_HAP1  } from '../modules/local/bbmap/filterbyname/main'
-include { BBMAP_FILTERBYNAME as BBMAP_FILTERBYNAME_HAP2  } from '../modules/local/bbmap/filterbyname/main'
+include { SCAFFOLDING                                    } from '../subworkflows/local/scaffolding/main'
+include { DECONTAMINATION                                } from '../subworkflows/local/decontamination/main'
 include { GFASTATS2 as GFASTATS_HAP1_FINAL                } from '../modules/local/gfastats2/main'
 include { GFASTATS2 as GFASTATS_HAP2_FINAL                } from '../modules/local/gfastats2/main'
 include { BUSCO_BUSCO as BUSCO_BUSCO_FINAL               } from '../modules/nf-core/busco/busco/main'
@@ -369,84 +363,46 @@ workflow REFGENOMES {
     )
     ch_versions = ch_versions.mix(OMNIC_HAP2.out.versions.first())
 
-    //
-    // MODULE: Run Yahs
-    //
+
+    // Prepare input channels for YAHS
     ch_yahs_hap1_in = OMNIC_HAP1.out.omnic_bam.join(GFASTATS_HAP1.out.assembly).join(OMNIC_HAP1.out.omnic_fai)
     ch_yahs_hap2_in = OMNIC_HAP2.out.omnic_bam.join(GFASTATS_HAP2.out.assembly).join(OMNIC_HAP2.out.omnic_fai)
     
-
-
-
-    YAHS_HAP1 (
+    // Prepare input channels for SALSA
+    ch_bamtobed_hap1_in = OMNIC_HAP1.out.omnic_bam
+    ch_bamtobed_hap2_in = OMNIC_HAP2.out.omnic_bam
+    ch_fasta_index_hap1 = GFASTATS_HAP1.out.assembly.join(OMNIC_HAP1.out.omnic_fai)
+    ch_fasta_index_hap2 = GFASTATS_HAP2.out.assembly.join(OMNIC_HAP2.out.omnic_fai)
+    
+    // Set up scaffolder suffix for file naming
+    scaffolder_suffix = params.scaffolder == 'yahs' ? '.1.yahs' : '.1.salsa'
+    
+    //
+    // SUBWORKFLOW: Run scaffolding (YAHS or SALSA based on parameter)
+    //
+    SCAFFOLDING (
         ch_yahs_hap1_in,
-        ".1.yahs.hap1"
-    )
-    ch_versions = ch_versions.mix(YAHS_HAP1.out.versions.first())
-
-    YAHS_HAP2 (
         ch_yahs_hap2_in,
-        ".1.yahs.hap2"
+        ch_bamtobed_hap1_in,
+        ch_bamtobed_hap2_in,
+        ch_fasta_index_hap1,
+        ch_fasta_index_hap2,
+        HIFIASM.out.hap1_contigs,  // Add HIFIASM contigs for SALSA
+        HIFIASM.out.hap2_contigs,  // Add HIFIASM contigs for SALSA
+        params.scaffolder  // 'yahs' or 'salsa'
     )
-    ch_versions = ch_versions.mix(YAHS_HAP2.out.versions.first())
+    ch_versions = ch_versions.mix(SCAFFOLDING.out.versions.first())
 
     //
-    // MODULE: Run Fcsgx
+    // SUBWORKFLOW: Run decontamination pipeline
     //
-    FCS_FCSGX_HAP1 (
-        YAHS_HAP1.out.scaffolds_fasta,
+    DECONTAMINATION (
+        SCAFFOLDING.out.hap1_scaffolds,
+        SCAFFOLDING.out.hap2_scaffolds,
         params.gxdb,
-        ".1.yahs.hap1.NCBI"
+        scaffolder_suffix
     )
-    ch_versions = ch_versions.mix(FCS_FCSGX_HAP1.out.versions.first())
-
-    FCS_FCSGX_HAP2 (
-        YAHS_HAP2.out.scaffolds_fasta,
-        params.gxdb,
-        ".1.yahs.hap2.NCBI"
-    )
-    ch_versions = ch_versions.mix(FCS_FCSGX_HAP2.out.versions.first())
-
-    FCSGX_CLEANGENOME_HAP1 (
-        YAHS_HAP1.out.scaffolds_fasta.join(FCS_FCSGX_HAP1.out.fcs_gx_report)
-    )
-
-    FCSGX_CLEANGENOME_HAP2 (
-        YAHS_HAP2.out.scaffolds_fasta.join(FCS_FCSGX_HAP2.out.fcs_gx_report)
-    )
-
-    //
-    // MODULE: Run Tiara
-    //
-    TIARA_TIARA_HAP1 (
-        FCSGX_CLEANGENOME_HAP1.out.cleaned,
-        ".1.yahs.hap1.tiara"
-    )
-    ch_versions = ch_versions.mix(TIARA_TIARA_HAP1.out.versions.first())
-
-    TIARA_TIARA_HAP2 (
-        FCSGX_CLEANGENOME_HAP2.out.cleaned,
-        ".1.yahs.hap2.tiara"
-    )
-    ch_versions = ch_versions.mix(TIARA_TIARA_HAP2.out.versions.first())
-
-    //
-    // MODULE: Run BBmap filterbyname
-    //
-    ch_bbmap_filterbyname_hap1_in = FCSGX_CLEANGENOME_HAP1.out.cleaned.join(TIARA_TIARA_HAP1.out.classifications)
-    ch_bbmap_filterbyname_hap2_in = FCSGX_CLEANGENOME_HAP2.out.cleaned.join(TIARA_TIARA_HAP2.out.classifications)
-
-    BBMAP_FILTERBYNAME_HAP1 (
-        ch_bbmap_filterbyname_hap1_in,
-        "2.tiara.hap1"
-    )
-    ch_versions = ch_versions.mix(BBMAP_FILTERBYNAME_HAP1.out.versions.first())
-
-    BBMAP_FILTERBYNAME_HAP2 (
-        ch_bbmap_filterbyname_hap2_in,
-        "2.tiara.hap2"
-    )
-    ch_versions = ch_versions.mix(BBMAP_FILTERBYNAME_HAP2.out.versions.first())
+    ch_versions = ch_versions.mix(DECONTAMINATION.out.versions.first())
 
     
     //
