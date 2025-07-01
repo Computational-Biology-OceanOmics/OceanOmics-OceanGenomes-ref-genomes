@@ -1,5 +1,5 @@
-include { YAHS_SUBWORKFLOW } from '../yahs/main'
-include { SALSA_SUBWORKFLOW } from '../salsa/main'
+include { YAHS } from '../yahs/main'
+include { SALSA } from '../salsa/main'
 
 workflow SCAFFOLDING {
     take:
@@ -21,16 +21,16 @@ workflow SCAFFOLDING {
     hap2_scaffolds = Channel.empty()
     
     if (scaffolder_type == 'yahs') {
-        YAHS_SUBWORKFLOW (
+        YAHS (
             ch_yahs_hap1_in,
             ch_yahs_hap2_in
         )
-        hap1_scaffolds = YAHS_SUBWORKFLOW.out.hap1_scaffolds
-        hap2_scaffolds = YAHS_SUBWORKFLOW.out.hap2_scaffolds
-        ch_versions = ch_versions.mix(YAHS_SUBWORKFLOW.out.versions)
+        hap1_scaffolds = YAHS.out.hap1_scaffolds
+        hap2_scaffolds = YAHS.out.hap2_scaffolds
+        ch_versions = ch_versions.mix(YAHS.out.versions)
         
     } else if (scaffolder_type == 'salsa') {
-        SALSA_SUBWORKFLOW (
+        SALSA (
             ch_bamtobed_hap1_in,
             ch_bamtobed_hap2_in,
             ch_fasta_index_hap1,
@@ -38,9 +38,9 @@ workflow SCAFFOLDING {
             ch_hap1_contigs,
             ch_hap2_contigs
         )
-        hap1_scaffolds = SALSA_SUBWORKFLOW.out.hap1_scaffolds
-        hap2_scaffolds = SALSA_SUBWORKFLOW.out.hap2_scaffolds
-        ch_versions = ch_versions.mix(SALSA_SUBWORKFLOW.out.versions)
+        hap1_scaffolds = SALSA.out.hap1_scaffolds
+        hap2_scaffolds = SALSA.out.hap2_scaffolds
+        ch_versions = ch_versions.mix(SALSA.out.versions)
     }
     
     emit:

@@ -54,8 +54,6 @@ include { paramsSummaryMap                               } from 'plugin/nf-valid
 include { paramsSummaryMultiqc                           } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML                         } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText                         } from '../subworkflows/local/utils_oceangenomesrefgenomes_pipeline'
-include { FCSGX_CLEANGENOME as FCSGX_CLEANGENOME_HAP1    } from '../modules/nf-core/fcsgx/cleangenome/main'
-include { FCSGX_CLEANGENOME as FCSGX_CLEANGENOME_HAP2    } from '../modules/nf-core/fcsgx/cleangenome/main'
 include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
 include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
 include { CAT_HIFI                                      } from '../modules/local/cat_hifi/main'
@@ -72,6 +70,11 @@ workflow REFGENOMES {
     ch_samplesheet // channel: samplesheet read in from --input
 
     main:
+    
+    // Validate scaffolder parameter
+    if (params.scaffolder != 'yahs' && params.scaffolder != 'salsa2') {
+        error "Invalid scaffolder parameter: ${params.scaffolder}. Must be 'yahs' or 'salsa2'"
+    }
 
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
@@ -373,6 +376,8 @@ workflow REFGENOMES {
     ch_bamtobed_hap2_in = OMNIC_HAP2.out.omnic_bam
     ch_fasta_index_hap1 = GFASTATS_HAP1.out.assembly.join(OMNIC_HAP1.out.omnic_fai)
     ch_fasta_index_hap2 = GFASTATS_HAP2.out.assembly.join(OMNIC_HAP2.out.omnic_fai)
+    ch_hap1_contigs = HIFIASM.out.hap1_contigs
+    ch_hap2_contigs = HIFIASM.out.hap2_contigs
     
     // Set up scaffolder suffix for file naming
     scaffolder_suffix = params.scaffolder == 'yahs' ? '.1.yahs' : '.1.salsa'
@@ -387,8 +392,8 @@ workflow REFGENOMES {
         ch_bamtobed_hap2_in,
         ch_fasta_index_hap1,
         ch_fasta_index_hap2,
-        HIFIASM.out.hap1_contigs,  // Add HIFIASM contigs for SALSA
-        HIFIASM.out.hap2_contigs,  // Add HIFIASM contigs for SALSA
+        ch_hap1_contigs,  // Add HIFIASM contigs for SALSA
+        ch_hap2_contigs,  // Add HIFIASM contigs for SALSA
         params.scaffolder  // 'yahs' or 'salsa'
     )
     ch_versions = ch_versions.mix(SCAFFOLDING.out.versions.first())

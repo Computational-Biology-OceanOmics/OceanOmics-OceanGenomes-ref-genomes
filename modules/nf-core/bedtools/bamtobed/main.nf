@@ -24,7 +24,7 @@ process BEDTOOLS_BAMTOBED {
     bedtools \\
         bamtobed \\
         $args \\
-        -i $bam \\
+        -i $omnic_bam \\
         > ${prefix}.bed
     
     sort -k 4 ${prefix}.bed > tmp && mv tmp ${prefix}.bed

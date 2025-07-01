@@ -5,7 +5,7 @@ workflow YAHS {
 
     take:
 
-    ch_yahs_decontam_hap1_in,    //channel [val(meta), [bam], [fasta], [fai]] for hap1
+    ch_yahs_decontam_hap1_in    //channel [val(meta), [bam], [fasta], [fai]] for hap1
     ch_yahs_decontam_hap2_in    //channel [val(meta), [bam], [fasta], [fai]] for hap2
 
     main:
@@ -16,13 +16,13 @@ workflow YAHS {
     //
 
     YAHS_HAP1 (
-        ch_yahs_decontam_hap1_in,
+        ch_yahs_hap1_in,
         ".1.yahs.hap1"
     )
     ch_versions = ch_versions.mix(YAHS_HAP1.out.versions.first())
 
     YAHS_HAP2 (
-        ch_yahs_decontam_hap2_in,
+        ch_yahs_hap2_in,
         ".1.yahs.hap2"
     )
     ch_versions = ch_versions.mix(YAHS_HAP2.out.versions.first())
