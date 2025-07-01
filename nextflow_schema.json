@@ -54,6 +54,14 @@
                     "description": "k value to use with Meryl.",
                     "default": 31
                 },
+                "scaffolder": {
+                    "type": "string",
+                    "description": "Scaffolding tool to use for genome assembly.",
+                    "enum": ["yahs", "salsa"],
+                    "default": "yahs",
+                    "fa_icon": "fas fa-puzzle-piece",
+                "help_text": "Choose which scaffolding tool to use. YAHS is generally faster and works well for most genomes. SALSA2 may provide better results for some complex genomes but requires more computational resources."
+        },
                 "buscomode": {
                     "type": "string",
                     "description": "Busco mode. Can be 'genome', 'ogs', or 'trans'.",
