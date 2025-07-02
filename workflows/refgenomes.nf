@@ -7,6 +7,7 @@
 include { HIFIADAPTERFILT                                } from '../modules/local/hifiadapterfilt/main'
 include { FASTQC as FASTQC_HIFI                          } from '../modules/nf-core/fastqc/main'
 include { FASTQC as FASTQC_HIC                           } from '../modules/nf-core/fastqc/main'
+include { FASTP as FASTP_HIC                             } from '../modules/nf-core/fastp/main'
 include { MERYL_COUNT                                    } from '../modules/nf-core/meryl/count/main'
 include { MERYL_HISTOGRAM                                } from '../modules/nf-core/meryl/histogram/main'
 include { GENOMESCOPE2                                   } from '../modules/nf-core/genomescope2/main'
@@ -72,8 +73,8 @@ workflow REFGENOMES {
     main:
     
     // Validate scaffolder parameter
-    if (params.scaffolder != 'yahs' && params.scaffolder != 'salsa2') {
-        error "Invalid scaffolder parameter: ${params.scaffolder}. Must be 'yahs' or 'salsa2'"
+    if (params.scaffolder != 'yahs' && params.scaffolder != 'salsa') {
+        error "Invalid scaffolder parameter: ${params.scaffolder}. Must be 'yahs' or 'salsa'"
     }
 
     ch_versions = Channel.empty()
@@ -245,10 +246,20 @@ workflow REFGENOMES {
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC_HIC.out.zip)
     ch_versions = ch_versions.mix(FASTQC_HIC.out.versions.first())
 
+    FASTP_HIC (
+        CAT_HIC.out.cat_files,
+        [],
+        [],
+        [],
+        [],
+        "hic"
+    )
+    ch_versions = ch_versions.mix(FASTP_HIC.out.versions.first())
+
     //
     // MODULE: Run Hifiasm
     //
-    ch_hifiasm_in = HIFIADAPTERFILT.out.reads.join(CAT_HIC.out.cat_files)
+    ch_hifiasm_in = HIFIADAPTERFILT.out.reads.join(FASTP_HIC.out.fastp_hic)
         .map {
             meta, hifi, hic ->
                 return [ meta, hifi, hic[0], hic[1] ]
@@ -338,14 +349,14 @@ workflow REFGENOMES {
     //
     // SUBWORKFLOW: Run omnic workflow
     //
-    ch_omnic_hap1_in = CAT_HIC.out.cat_files.join(ch_contig_assemblies)
+    ch_omnic_hap1_in = FASTP_HIC.out.fastp_hic.join(ch_contig_assemblies)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies[0] ]
         }
     
     
-    ch_omnic_hap2_in = CAT_HIC.out.cat_files.join(ch_contig_assemblies)
+    ch_omnic_hap2_in = FASTP_HIC.out.fastp_hic.join(ch_contig_assemblies)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies[1] ]
@@ -415,8 +426,8 @@ workflow REFGENOMES {
     //
 
 
-    ch_gfastats2_hap1_in = BBMAP_FILTERBYNAME_HAP1.out.scaffolds.join(GENOMESCOPE2.out.summary)
-    ch_gfastats2_hap2_in = BBMAP_FILTERBYNAME_HAP2.out.scaffolds.join(GENOMESCOPE2.out.summary)
+    ch_gfastats2_hap1_in = DECONTAMINATION.out.hap1_clean_scaffolds.join(GENOMESCOPE2.out.summary)
+    ch_gfastats2_hap2_in = DECONTAMINATION.out.hap2_clean_scaffolds.join(GENOMESCOPE2.out.summary)
 
 
     GFASTATS_HAP1_FINAL (
@@ -452,11 +463,11 @@ workflow REFGENOMES {
     // MODULE: Run Busco again
     //
 
-    busco_final_assemblies_ch=BBMAP_FILTERBYNAME_HAP1.out.scaffolds.join(BBMAP_FILTERBYNAME_HAP2.out.scaffolds)
-            .map {
-            meta, hap1_scaffolds, hap2_scaffolds ->
-                return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
-        }
+    busco_final_assemblies_ch = DECONTAMINATION.out.hap1_clean_scaffolds.join(DECONTAMINATION.out.hap2_clean_scaffolds)
+    .map {
+        meta, hap1_scaffolds, hap2_scaffolds ->
+            return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
+    }
 
     BUSCO_BUSCO_FINAL (
         busco_final_assemblies_ch,
@@ -479,11 +490,11 @@ workflow REFGENOMES {
     //
     // MODULE: Rename, and concatenate scaffolds
     //
-    ch_filtered_scaffolds = BBMAP_FILTERBYNAME_HAP1.out.scaffolds.join(BBMAP_FILTERBYNAME_HAP2.out.scaffolds)
+    ch_filtered_scaffolds = DECONTAMINATION.out.hap1_clean_scaffolds.join(DECONTAMINATION.out.hap2_clean_scaffolds)
         .map {
-            meta, hap1_scaffolds, hap2_scaffolds ->
-                return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
-        }
+        meta, hap1_scaffolds, hap2_scaffolds ->
+            return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
+    }
 
     CAT_SCAFFOLDS (
        ch_filtered_scaffolds,
@@ -519,19 +530,19 @@ workflow REFGENOMES {
     // SUBWORFLOW: Run omnic again
     //
 
-    ch_omnic_hap1_in = CAT_HIC.out.cat_files.join(CAT_SCAFFOLDS.out.hap1_scaffold)
+    ch_omnic_hap1_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.hap1_scaffold)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]
         }
 
-    ch_omnic_hap2_in = CAT_HIC.out.cat_files.join(CAT_SCAFFOLDS.out.hap2_scaffold)
+    ch_omnic_hap2_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.hap2_scaffold)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]
         }
 
-    ch_omic_dual_in = CAT_HIC.out.cat_files.join(CAT_SCAFFOLDS.out.cat_file)
+    ch_omic_dual_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.cat_file)
             .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]
