@@ -11,9 +11,9 @@ include { FASTP as FASTP_HIC                             } from '../modules/nf-c
 include { MERYL_COUNT                                    } from '../modules/nf-core/meryl/count/main'
 include { MERYL_HISTOGRAM                                } from '../modules/nf-core/meryl/histogram/main'
 include { GENOMESCOPE2                                   } from '../modules/nf-core/genomescope2/main'
-include { HIFIASM1 as HIFIASM_SOLO                       } from '../modules/local/hifiasm1/main'
-include { GFASTATS as GFASTATS_HIFI_PRIMARY              } from '../modules/nf-core/gfastats/main'
-include { GFASTATS as GFASTATS_HIFI_ALT                  } from '../modules/nf-core/gfastats/main'
+//include { HIFIASM1 as HIFIASM_SOLO                       } from '../modules/local/hifiasm1/main'
+//include { GFASTATS as GFASTATS_HIFI_PRIMARY              } from '../modules/nf-core/gfastats/main'
+//include { GFASTATS as GFASTATS_HIFI_ALT                  } from '../modules/nf-core/gfastats/main'
 include { CAT_HIC                                        } from '../modules/local/cat_hic/main'
 include { HIFIASM                                        } from '../modules/nf-core/hifiasm/main'
 include { GFASTATS as GFASTATS_HAP1                      } from '../modules/nf-core/gfastats/main'
@@ -55,8 +55,8 @@ include { paramsSummaryMap                               } from 'plugin/nf-valid
 include { paramsSummaryMultiqc                           } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML                         } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText                         } from '../subworkflows/local/utils_oceangenomesrefgenomes_pipeline'
-include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
-include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
+//include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
+//include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
 include { CAT_HIFI                                      } from '../modules/local/cat_hifi/main'
 
 /*
@@ -126,26 +126,26 @@ workflow REFGENOMES {
     CAT_HIFI (
         HIFIADAPTERFILT.out.reads)
 
-    MITOHIFI_FINDMITOREFERENCE (
-        ch_species
-    )
+   // MITOHIFI_FINDMITOREFERENCE (
+   //     ch_species
+   // )
 
 
-    MITOHIFI_MITOHIFI (
-        CAT_HIFI.out.hifi_cat,
-        ch_mito,
-        MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
-        MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
-        "r",
-        "hifi",
-        "v3mitohifi"
-    )
+   // MITOHIFI_MITOHIFI (
+   //     CAT_HIFI.out.hifi_cat,
+   //     ch_mito,
+    //    MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
+    //    MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
+   //     "r",
+   //     "hifi",
+   //     "v3mitohifi"
+   // )
 
     // Collect failed samples
-    failed_samples = MITOHIFI_MITOHIFI.out.failed_samples.collectFile(name: 'failed_mitohifi_samples.txt')
+   // failed_samples = MITOHIFI_MITOHIFI.out.failed_samples.collectFile(name: 'failed_mitohifi_samples.txt')
 
     // You can add additional steps here to process the failed samples if needed
-    failed_samples.view { "MitoHiFi failed for the following samples:\n${it.text}" }
+   // failed_samples.view { "MitoHiFi failed for the following samples:\n${it.text}" }
     //
     // MODULE: Run FastQC on HiFi fastqc files
     //
@@ -187,45 +187,45 @@ workflow REFGENOMES {
     // MODULE: Run hifi only assembly 
     //
 
-    HIFIASM_SOLO( 
-        HIFIADAPTERFILT.out.reads,
-        "0.hifiasm"
-    )
+   // HIFIASM_SOLO( 
+   //     HIFIADAPTERFILT.out.reads,
+   //     "0.hifiasm"
+   // )
 
     ///
     /// MODULE: gfa stats primary and alternate
     ///
-    ch_gfastats_hifi_only_primary = HIFIASM_SOLO.out.primary_contigs.join(GENOMESCOPE2.out.summary)
-    ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
+  //  ch_gfastats_hifi_only_primary = HIFIASM_SOLO.out.primary_contigs.join(GENOMESCOPE2.out.summary)
+  //  ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
 
 
-    GFASTATS_HIFI_PRIMARY (
-       ch_gfastats_hifi_only_primary,
-        "fasta",
-        "",
-        "p_ctg",
-        "0.hifiasm",
-        [],
-        [],
-        [],
-        []
-  )
-        ch_versions = ch_versions.mix(GFASTATS_HIFI_PRIMARY.out.versions.first())
+   // GFASTATS_HIFI_PRIMARY (
+   //    ch_gfastats_hifi_only_primary,
+   //     "fasta",
+   //     "",
+   //     "p_ctg",
+  //      "0.hifiasm",
+   //     [],
+   //     [],
+   //     [],
+   //     []
+  //)
+  //      ch_versions = ch_versions.mix(GFASTATS_HIFI_PRIMARY.out.versions.first())
 
-    ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
+   // ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
 
-    GFASTATS_HIFI_ALT (
-        ch_gfastats_hifi_only_alternate,
-       "fasta",
-        "",
-       "a_ctg",
-        "0.hifiasm",
-        [],
-       [],
-        [],
-        []
-    )
-    ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
+   // GFASTATS_HIFI_ALT (
+   //     ch_gfastats_hifi_only_alternate,
+  //     "fasta",
+   //     "",
+  //     "a_ctg",
+   //     "0.hifiasm",
+  //      [],
+  //     [],
+  //      [],
+  //      []
+   // )
+   // ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
 
 
     //

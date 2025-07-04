@@ -5,8 +5,8 @@ workflow YAHS {
 
     take:
 
-    ch_yahs_decontam_hap1_in    //channel [val(meta), [bam], [fasta], [fai]] for hap1
-    ch_yahs_decontam_hap2_in    //channel [val(meta), [bam], [fasta], [fai]] for hap2
+    ch_yahs_hap1_in    //channel [val(meta), [bam], [fasta], [fai]] for hap1
+    ch_yahs_hap2_in    //channel [val(meta), [bam], [fasta], [fai]] for hap2
 
     main:
     ch_versions = Channel.empty()
