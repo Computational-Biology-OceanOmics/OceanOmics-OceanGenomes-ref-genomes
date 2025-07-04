@@ -10,8 +10,8 @@ process SALSA2 {
 
     input:
     tuple val(meta), path(fasta), path(index)
-    path(bed)
-    path(gfa)
+    tuple val(meta), path(bed)
+    tuple val(meta), path(gfa)
     path(dup)
     path(filter_bed)
     val(haplotype)

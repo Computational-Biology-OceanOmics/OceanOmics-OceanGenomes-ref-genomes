@@ -1,4 +1,4 @@
-process BEDTOOLS_BAMTOBED {
+process BAMTOBED {
     tag "$meta.id"
     label 'process_medium'
 

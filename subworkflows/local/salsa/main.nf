@@ -14,6 +14,9 @@ workflow SALSA {
         ch_hap1_contigs    // Add HIFIASM contigs for SALSA
         ch_hap2_contigs    // Add HIFIASM contigs for SALSA
 
+        main:
+        ch_versions = Channel.empty()
+
 
     //RUN SALSA2
     // MODULE: Run bamtobed
@@ -31,7 +34,6 @@ workflow SALSA {
     ch_versions = ch_versions.mix(BAMTOBED_HAP2.out.versions.first())
 
     //MODULE : Run SALSA2
-
 
 
     SALSA2_HAP1 (
@@ -55,8 +57,8 @@ workflow SALSA {
     ch_versions = ch_versions.mix(SALSA2_HAP2.out.versions.first())
 
     emit:
-    hap1_scaffolds = SALSA2_HAP1.out.fasta  // Adjust based on actual SALSA2 output
-    hap2_scaffolds = SALSA2_HAP2.out.fasta  // Adjust based on actual SALSA2 output
+    hap1_scaffolds = SALSA2_HAP1.out.salsa_fasta  // Adjust based on actual SALSA2 output
+    hap2_scaffolds = SALSA2_HAP2.out.salsa_fasta  // Adjust based on actual SALSA2 output
     versions = ch_versions
 
     }
