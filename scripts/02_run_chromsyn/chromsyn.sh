@@ -50,8 +50,8 @@ echo "BUSCO database: $busco_db"
 #---------------
 # Move and rename assemblies
 echo "Copying final assemblies to chromsyn directory... "
-cp ../05-decontamination/final-fastas/${sample}_${ver}.2.tiara.hap1_scaffolds.fa .
-cp ../05-decontamination/final-fastas/${sample}_${ver}.2.tiara.hap2_scaffolds.fa .
+cp ../05-decontamination/final-fastas/${sample}_${ver}.hap1.scaffolds_1.fa .
+cp ../05-decontamination/final-fastas/${sample}_${ver}.hap2.scaffolds_2.fa .
 
 #---------------
 # Run compleasm
