@@ -55,8 +55,8 @@ include { paramsSummaryMap                               } from 'plugin/nf-valid
 include { paramsSummaryMultiqc                           } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML                         } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText                         } from '../subworkflows/local/utils_oceangenomesrefgenomes_pipeline'
-//include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
-//include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
+include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
+include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
 include { CAT_HIFI                                      } from '../modules/local/cat_hifi/main'
 
 /*
@@ -126,23 +126,23 @@ workflow REFGENOMES {
     CAT_HIFI (
         HIFIADAPTERFILT.out.reads)
 
-   // MITOHIFI_FINDMITOREFERENCE (
-   //     ch_species
-   // )
+    MITOHIFI_FINDMITOREFERENCE (
+        ch_species
+    )
 
 
-   // MITOHIFI_MITOHIFI (
-   //     CAT_HIFI.out.hifi_cat,
-   //     ch_mito,
-    //    MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
-    //    MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
-   //     "r",
-   //     "hifi",
-   //     "v3mitohifi"
-   // )
+    MITOHIFI_MITOHIFI (
+        CAT_HIFI.out.hifi_cat,
+        ch_mito,
+        MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
+        MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
+       "r",
+        "hifi",
+        "v3mitohifi"
+    )
 
-    // Collect failed samples
-   // failed_samples = MITOHIFI_MITOHIFI.out.failed_samples.collectFile(name: 'failed_mitohifi_samples.txt')
+   //  Collect failed samples
+  //  failed_samples = MITOHIFI_MITOHIFI.out.failed_samples.collectFile(name: 'failed_mitohifi_samples.txt')
 
     // You can add additional steps here to process the failed samples if needed
    // failed_samples.view { "MitoHiFi failed for the following samples:\n${it.text}" }

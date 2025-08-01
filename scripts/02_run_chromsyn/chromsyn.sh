@@ -33,7 +33,7 @@ echo "========================================="
 # Define variables
 sample=$1
 seq_date=$2
-asm_ver=hic1
+asm_ver=$3
 ver="${seq_date}.${asm_ver}"
 busco_db=actinopterygii_odb10
 

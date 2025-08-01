@@ -29,10 +29,26 @@ process FCS_FCSGX {
     def FCSGX_VERSION = '0.4.0'
 
     """
+
+    export NXF_SINGULARITY_NEW_PID_NAMESPACE=false
+    
+    echo 'copying database files to /tmp/'
+    mkdir -p /tmp/gxdb/
+    cp -v ${gxdb}/all.gxi /tmp/gxdb/
+    cp -v ${gxdb}/all.gxs /tmp/gxdb/
+    cp -v ${gxdb}/all.meta.jsonl /tmp/gxdb/
+    cp -v ${gxdb}/all.blast_div.tsv.gz /tmp/gxdb/
+    cp -v ${gxdb}/all.taxa.tsv /tmp/gxdb/
+    echo 'done copying database files'
+    ls -l /tmp/gxdb/
+
+
+    cp `readlink ${assembly}` ${prefix}_copied_input.fasta
+
     python3 /app/bin/run_gx \\
-        --fasta $assembly \\
+        --fasta ${prefix}_copied_input.fasta \\
         --out-dir ./out \\
-        --gx-db $gxdb \\
+        --gx-db /tmp/gxdb \\
         --tax-id ${meta.taxid} \\
         --out-basename ${prefix}_${haplotype}.${meta.taxid} \\
         $args
@@ -54,8 +70,9 @@ process FCS_FCSGX {
 
     """
     mkdir -p out
-    touch out/${prefix}.fcs_gx_report.txt
-    touch out/${prefix}.taxonomy.rpt
+    mkdir -p /tmp/gxdb/
+    touch out/${prefix}_${haplotype}.${meta.taxid}.fcs_gx_report.txt
+    touch out/${prefix}_${haplotype}.${meta.taxid}.taxonomy.rpt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
