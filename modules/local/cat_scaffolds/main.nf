@@ -30,8 +30,8 @@ process CAT_SCAFFOLDS {
     hap2_original=\$(grep -c '^>' ${prefix}.2.tiara.hap2_scaffolds.fa)
     
     # Rename scaffolds
-    sed 's/scaffold/H1.scaffold/g' ${prefix}.2.tiara.hap1_scaffolds.fa > ${prefix}.hap1.scaffolds_1.fa
-    sed 's/scaffold/H2.scaffold/g' ${prefix}.2.tiara.hap2_scaffolds.fa > ${prefix}.hap2.scaffolds_2.fa
+    awk '/^>/ { sub(/^>scaffold/, ">H1.scaffold"); print; next } { print }' ${prefix}.2.tiara.hap1_scaffolds.fa > ${prefix}.hap1.scaffolds_1.fa
+    awk '/^>/ { sub(/^>scaffold/, ">H2.scaffold"); print; next } { print }' ${prefix}.2.tiara.hap2_scaffolds.fa > ${prefix}.hap2.scaffolds_2.fa
 
     # Count scaffolds after renaming (should match original, but for verification)
     hap1_renamed=\$(grep -c '^>' ${prefix}.hap1.scaffolds_1.fa)
