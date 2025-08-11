@@ -14,11 +14,7 @@ tail -n +2 "$SAMPLE_SHEET" | while IFS=',' read -r sample hifi_dir hic_dir versi
 
     echo "Processing sample: $sample, date: $date, version: $version"
 
-<<<<<<< HEAD
     OUTPUT_DIR="/scratch/pawsey0964/lhuet/ref-gen/yahs/${sample}/09-chromsyn"
-=======
-    OUTPUT_DIR="/scratch/pawsey0964/lhuet/ref-gen/salsa/${sample}/09-chromsyn"
->>>>>>> salsa-pipeline/salsa-temp-branch
     echo "Creating directory: $OUTPUT_DIR"
     [[ "$DRY_RUN" == "false" ]] && mkdir -p "$OUTPUT_DIR"
 
@@ -31,13 +27,8 @@ tail -n +2 "$SAMPLE_SHEET" | while IFS=',' read -r sample hifi_dir hic_dir versi
     echo "Submitting job: sbatch ./chromsyn.sh $sample $date $version"
     [[ "$DRY_RUN" == "false" ]] && sbatch ./chromsyn.sh "$sample" "$date" "$version"
 
-<<<<<<< HEAD
     echo "Waiting 2 minutes before next submission..."
     sleep 120  # 5-minute delay
-=======
-    echo "Waiting 5 minutes before next submission..."
-    sleep 300  # 5-minute delay
->>>>>>> salsa-pipeline/salsa-temp-branch
 
     echo "Returning to the original directory"
     [[ "$DRY_RUN" == "false" ]] && cd - > /dev/null

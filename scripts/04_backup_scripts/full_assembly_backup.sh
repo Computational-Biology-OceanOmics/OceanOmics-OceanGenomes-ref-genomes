@@ -29,13 +29,13 @@ fi
 
 # Tar kmer directories
 rm -f success
-tar -czvf ${OG}/02-kmer-profiling/meryl/${OG}_${asm_ver}.meryldb.tar.gz -C ${OG}/02-kmer-profiling/meryl ${OG}_${asm_ver}.meryldb && touch success
+tar -czvf ${OG}/02-kmer-profiling/meryl/${OG}_${asm_ver}.meryl.tar.gz -C ${OG}/02-kmer-profiling/meryl ${OG}_${asm_ver}.meryl && touch success
 
 wait
 
 # Remove only if tar was successful and the file exists
 if [[ -f success ]]; then
-  target_dir="${OG}/02-kmer-profiling/meryl/${OG}_${asm_ver}.meryldb"
+  target_dir="${OG}/02-kmer-profiling/meryl/${OG}_${asm_ver}.meryl"
   if [[ -d $target_dir ]]; then
     rm -rf "$target_dir"
     echo "Removed directory: $target_dir"
@@ -137,38 +137,43 @@ rclone copy ${OG}/multiqc pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${asm_
 
 # Backing up mitogenome results
 
-rclone copy ${OG}/01-data-processing/mtdna/MitoReference pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/MitoReference/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome.fasta pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/${OG}.hifi.${date}.v3mitohifi.fasta --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/contigs_circularization/all_contigs.circularisationCheck.txt pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome_choice/all_mitogenomes.rotated.fa pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/contigs_stats.tsv pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/coverage_mapping/ pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/coverage_mapping/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/coverage_plot.png pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome.coverage.png pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/contigs_annotations.png pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/mtdnaannotation/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome.annotation.png pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/mtdnaannotation/ --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome.gb pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/mtdnaannotation/ --checksum --progress
+#if mito hifi failes but some files still produced
+
+rclone copy ${OG}/01-data-processing/mtdna pawsey0964:oceanomics-refassemblies/${OG}/mtdna-hifi
+
+# if pass and run LCA 
+rclone copy ${OG}/01-data-processing/mtdna/MitoReference pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/MitoReference/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome.fasta pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/${OG}.hifi.${date}.v3mitohifi.fasta --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/contigs_circularization/all_contigs.circularisationCheck.txt pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome_choice/all_mitogenomes.rotated.fa pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/contigs_stats.tsv pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/coverage_mapping/ pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/coverage_mapping/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/coverage_plot.png pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome.coverage.png pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/contigs_annotations.png pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/mtdnaannotation/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome.annotation.png pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/mtdnaannotation/ --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/final_mitogenome.gb pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/mtdna/mtdnaannotation/ --checksum --progress
  
 
 # Backing up LCA results
-rclone copy ${OG}/01-data-processing/mtdna/lca/blast.12s.${OG}.hifi.${date}.v3mitohifi.emma102.filtered.tsv pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/lca/blast.16s.${OG}.hifi.${date}.v3mitohifi.emma102.filtered.tsv pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/lca/blast.CO1.${OG}.hifi.${date}.v3mitohifi.emma102.filtered.tsv pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/lca/lca.12s.${OG}.hifi.${date}.v3mitohifi.emma102.tsv pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/lca/lca.16s.${OG}.hifi.${date}.v3mitohifi.emma102.tsv pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/lca/lca.CO1.${OG}.hifi.${date}.v3mitohifi.emma102.tsv pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/lca/blast.12s.${OG}.hifi.${date}.v3mitohifi.emma102.filtered.tsv pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/lca/blast.16s.${OG}.hifi.${date}.v3mitohifi.emma102.filtered.tsv pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/lca/blast.CO1.${OG}.hifi.${date}.v3mitohifi.emma102.filtered.tsv pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/lca/lca.12s.${OG}.hifi.${date}.v3mitohifi.emma102.tsv pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/lca/lca.16s.${OG}.hifi.${date}.v3mitohifi.emma102.tsv pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/lca/lca.CO1.${OG}.hifi.${date}.v3mitohifi.emma102.tsv pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/lca --checksum --progress
 
 #backing up emma 
-rclone copy ${OG}/01-data-processing/mtdna/emma/${OG}.hifi.${date}.v3mitohifi.emma102.svg pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/emma/${OG}.hifi.${date}.v3mitohifi.emma102.fa pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/emma/${OG}.hifi.${date}.v3mitohifi.emma102.fa.gff pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/emma/${OG}.hifi.${date}.v3mitohifi.emma102.tbl pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/emma/${OG}.hifi.${date}.v3mitohifi.emma102.svg pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/emma/${OG}.hifi.${date}.v3mitohifi.emma102.fa pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/emma/${OG}.hifi.${date}.v3mitohifi.emma102.fa.gff pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/emma/${OG}.hifi.${date}.v3mitohifi.emma102.tbl pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma --checksum --progress
 
 
 #backing up CDS
-rclone copy ${OG}/01-data-processing/mtdna/emma/cds/MT-CO1.${OG}.hifi.240520.v3mitohifi.emma102.fa pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma/cds --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/emma/cds/MT-RNR1.${OG}.hifi.240520.v3mitohifi.emma102.fa pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma/cds --checksum --progress
-rclone copy ${OG}/01-data-processing/mtdna/emma/cds/MT-RNR2.${OG}.hifi.240520.v3mitohifi.emma102.fa pawsey0812:oceanomics-mitogenomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma/cds --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/emma/cds/MT-CO1.${OG}.hifi.240520.v3mitohifi.emma102.fa pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma/cds --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/emma/cds/MT-RNR1.${OG}.hifi.240520.v3mitohifi.emma102.fa pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma/cds --checksum --progress
+rclone copy ${OG}/01-data-processing/mtdna/emma/cds/MT-RNR2.${OG}.hifi.240520.v3mitohifi.emma102.fa pawsey0964:oceanomics-mitochondrial-genomes/${OG}/${OG}.hifi.${date}.v3mitohifi/emma/cds --checksum --progress
 
 
 
