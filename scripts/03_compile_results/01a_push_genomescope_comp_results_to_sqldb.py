@@ -11,7 +11,7 @@ db_params = {
     'port': 5432
 }
 
-
+# run this with singularity run $SING/psycopg2:0.1.sif python 
 # File containing genomescope stats data
 
 genomescope_compiled_path = f"genomescope_compiled_results.tsv"  # if your file structure is different this might not work.

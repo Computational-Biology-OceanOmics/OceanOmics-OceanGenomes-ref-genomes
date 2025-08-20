@@ -7,12 +7,13 @@
 include { HIFIADAPTERFILT                                } from '../modules/local/hifiadapterfilt/main'
 include { FASTQC as FASTQC_HIFI                          } from '../modules/nf-core/fastqc/main'
 include { FASTQC as FASTQC_HIC                           } from '../modules/nf-core/fastqc/main'
+include { FASTP as FASTP_HIC                             } from '../modules/nf-core/fastp/main'
 include { MERYL_COUNT                                    } from '../modules/nf-core/meryl/count/main'
 include { MERYL_HISTOGRAM                                } from '../modules/nf-core/meryl/histogram/main'
 include { GENOMESCOPE2                                   } from '../modules/nf-core/genomescope2/main'
-include { HIFIASM1 as HIFIASM_SOLO                       } from '../modules/local/hifiasm1/main'
-include { GFASTATS as GFASTATS_HIFI_PRIMARY              } from '../modules/nf-core/gfastats/main'
-include { GFASTATS as GFASTATS_HIFI_ALT                  } from '../modules/nf-core/gfastats/main'
+//include { HIFIASM1 as HIFIASM_SOLO                       } from '../modules/local/hifiasm1/main'
+//include { GFASTATS as GFASTATS_HIFI_PRIMARY              } from '../modules/nf-core/gfastats/main'
+//include { GFASTATS as GFASTATS_HIFI_ALT                  } from '../modules/nf-core/gfastats/main'
 include { CAT_HIC                                        } from '../modules/local/cat_hic/main'
 include { HIFIASM                                        } from '../modules/nf-core/hifiasm/main'
 include { GFASTATS as GFASTATS_HAP1                      } from '../modules/nf-core/gfastats/main'
@@ -22,14 +23,8 @@ include { BUSCO_GENERATEPLOT                             } from '../modules/nf-c
 include { MERQURY                                        } from '../modules/nf-core/merqury/main'
 include { OMNIC as OMNIC_HAP1                            } from '../modules/local/omnic/main'
 include { OMNIC as OMNIC_HAP2                            } from '../modules/local/omnic/main'
-include { YAHS as YAHS_HAP1                              } from '../modules/nf-core/yahs/main'
-include { YAHS as YAHS_HAP2                              } from '../modules/nf-core/yahs/main'
-include { FCS_FCSGX as FCS_FCSGX_HAP1                    } from '../modules/nf-core/fcs/fcsgx/main'
-include { FCS_FCSGX as FCS_FCSGX_HAP2                    } from '../modules/nf-core/fcs/fcsgx/main'
-include { TIARA_TIARA as TIARA_TIARA_HAP1                } from '../modules/nf-core/tiara/tiara/main'
-include { TIARA_TIARA as TIARA_TIARA_HAP2                } from '../modules/nf-core/tiara/tiara/main'
-include { BBMAP_FILTERBYNAME as BBMAP_FILTERBYNAME_HAP1  } from '../modules/local/bbmap/filterbyname/main'
-include { BBMAP_FILTERBYNAME as BBMAP_FILTERBYNAME_HAP2  } from '../modules/local/bbmap/filterbyname/main'
+include { SCAFFOLDING                                    } from '../subworkflows/local/scaffolding/main'
+include { DECONTAMINATION                                } from '../subworkflows/local/decontamination/main'
 include { GFASTATS2 as GFASTATS_HAP1_FINAL                } from '../modules/local/gfastats2/main'
 include { GFASTATS2 as GFASTATS_HAP2_FINAL                } from '../modules/local/gfastats2/main'
 include { BUSCO_BUSCO as BUSCO_BUSCO_FINAL               } from '../modules/nf-core/busco/busco/main'
@@ -60,8 +55,6 @@ include { paramsSummaryMap                               } from 'plugin/nf-valid
 include { paramsSummaryMultiqc                           } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML                         } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText                         } from '../subworkflows/local/utils_oceangenomesrefgenomes_pipeline'
-include { FCSGX_CLEANGENOME as FCSGX_CLEANGENOME_HAP1    } from '../modules/nf-core/fcsgx/cleangenome/main'
-include { FCSGX_CLEANGENOME as FCSGX_CLEANGENOME_HAP2    } from '../modules/nf-core/fcsgx/cleangenome/main'
 include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
 include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
 include { CAT_HIFI                                      } from '../modules/local/cat_hifi/main'
@@ -78,6 +71,11 @@ workflow REFGENOMES {
     ch_samplesheet // channel: samplesheet read in from --input
 
     main:
+    
+    // Validate scaffolder parameter
+    if (params.scaffolder != 'yahs' && params.scaffolder != 'salsa') {
+        error "Invalid scaffolder parameter: ${params.scaffolder}. Must be 'yahs' or 'salsa'"
+    }
 
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
@@ -138,16 +136,16 @@ workflow REFGENOMES {
         ch_mito,
         MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
         MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
-        "r",
+       "r",
         "hifi",
         "v3mitohifi"
     )
 
-    // Collect failed samples
-    failed_samples = MITOHIFI_MITOHIFI.out.failed_samples.collectFile(name: 'failed_mitohifi_samples.txt')
+   //  Collect failed samples
+  //  failed_samples = MITOHIFI_MITOHIFI.out.failed_samples.collectFile(name: 'failed_mitohifi_samples.txt')
 
     // You can add additional steps here to process the failed samples if needed
-    failed_samples.view { "MitoHiFi failed for the following samples:\n${it.text}" }
+   // failed_samples.view { "MitoHiFi failed for the following samples:\n${it.text}" }
     //
     // MODULE: Run FastQC on HiFi fastqc files
     //
@@ -189,45 +187,45 @@ workflow REFGENOMES {
     // MODULE: Run hifi only assembly 
     //
 
-    HIFIASM_SOLO( 
-        HIFIADAPTERFILT.out.reads,
-        "0.hifiasm"
-    )
+   // HIFIASM_SOLO( 
+   //     HIFIADAPTERFILT.out.reads,
+   //     "0.hifiasm"
+   // )
 
     ///
     /// MODULE: gfa stats primary and alternate
     ///
-    ch_gfastats_hifi_only_primary = HIFIASM_SOLO.out.primary_contigs.join(GENOMESCOPE2.out.summary)
-    ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
+  //  ch_gfastats_hifi_only_primary = HIFIASM_SOLO.out.primary_contigs.join(GENOMESCOPE2.out.summary)
+  //  ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
 
 
-    GFASTATS_HIFI_PRIMARY (
-       ch_gfastats_hifi_only_primary,
-        "fasta",
-        "",
-        "p_ctg",
-        "0.hifiasm",
-        [],
-        [],
-        [],
-        []
-  )
-        ch_versions = ch_versions.mix(GFASTATS_HIFI_PRIMARY.out.versions.first())
+   // GFASTATS_HIFI_PRIMARY (
+   //    ch_gfastats_hifi_only_primary,
+   //     "fasta",
+   //     "",
+   //     "p_ctg",
+  //      "0.hifiasm",
+   //     [],
+   //     [],
+   //     [],
+   //     []
+  //)
+  //      ch_versions = ch_versions.mix(GFASTATS_HIFI_PRIMARY.out.versions.first())
 
-    ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
+   // ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
 
-    GFASTATS_HIFI_ALT (
-        ch_gfastats_hifi_only_alternate,
-       "fasta",
-        "",
-       "a_ctg",
-        "0.hifiasm",
-        [],
-       [],
-        [],
-        []
-    )
-    ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
+   // GFASTATS_HIFI_ALT (
+   //     ch_gfastats_hifi_only_alternate,
+  //     "fasta",
+   //     "",
+  //     "a_ctg",
+   //     "0.hifiasm",
+  //      [],
+  //     [],
+  //      [],
+  //      []
+   // )
+   // ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
 
 
     //
@@ -248,10 +246,20 @@ workflow REFGENOMES {
     ch_multiqc_files = ch_multiqc_files.mix(FASTQC_HIC.out.zip)
     ch_versions = ch_versions.mix(FASTQC_HIC.out.versions.first())
 
+    FASTP_HIC (
+        CAT_HIC.out.cat_files,
+        [],
+        [],
+        [],
+        [],
+        "hic"
+    )
+    ch_versions = ch_versions.mix(FASTP_HIC.out.versions.first())
+
     //
     // MODULE: Run Hifiasm
     //
-    ch_hifiasm_in = HIFIADAPTERFILT.out.reads.join(CAT_HIC.out.cat_files)
+    ch_hifiasm_in = HIFIADAPTERFILT.out.reads.join(FASTP_HIC.out.fastp_hic)
         .map {
             meta, hifi, hic ->
                 return [ meta, hifi, hic[0], hic[1] ]
@@ -341,14 +349,14 @@ workflow REFGENOMES {
     //
     // SUBWORKFLOW: Run omnic workflow
     //
-    ch_omnic_hap1_in = CAT_HIC.out.cat_files.join(ch_contig_assemblies)
+    ch_omnic_hap1_in = FASTP_HIC.out.fastp_hic.join(ch_contig_assemblies)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies[0] ]
         }
     
     
-    ch_omnic_hap2_in = CAT_HIC.out.cat_files.join(ch_contig_assemblies)
+    ch_omnic_hap2_in = FASTP_HIC.out.fastp_hic.join(ch_contig_assemblies)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies[1] ]
@@ -369,84 +377,48 @@ workflow REFGENOMES {
     )
     ch_versions = ch_versions.mix(OMNIC_HAP2.out.versions.first())
 
-    //
-    // MODULE: Run Yahs
-    //
+
+    // Prepare input channels for YAHS
     ch_yahs_hap1_in = OMNIC_HAP1.out.omnic_bam.join(GFASTATS_HAP1.out.assembly).join(OMNIC_HAP1.out.omnic_fai)
     ch_yahs_hap2_in = OMNIC_HAP2.out.omnic_bam.join(GFASTATS_HAP2.out.assembly).join(OMNIC_HAP2.out.omnic_fai)
     
-
-
-
-    YAHS_HAP1 (
+    // Prepare input channels for SALSA
+    ch_bamtobed_hap1_in = OMNIC_HAP1.out.omnic_bam
+    ch_bamtobed_hap2_in = OMNIC_HAP2.out.omnic_bam
+    ch_fasta_index_hap1 = GFASTATS_HAP1.out.assembly.join(OMNIC_HAP1.out.omnic_fai)
+    ch_fasta_index_hap2 = GFASTATS_HAP2.out.assembly.join(OMNIC_HAP2.out.omnic_fai)
+    ch_hap1_contigs = HIFIASM.out.hap1_contigs
+    ch_hap2_contigs = HIFIASM.out.hap2_contigs
+    
+    // Set up scaffolder suffix for file naming
+    scaffolder_suffix = params.scaffolder == 'yahs' ? '.1.yahs' : '.1.salsa'
+    
+    //
+    // SUBWORKFLOW: Run scaffolding (YAHS or SALSA based on parameter)
+    //
+    SCAFFOLDING (
         ch_yahs_hap1_in,
-        ".1.yahs.hap1"
-    )
-    ch_versions = ch_versions.mix(YAHS_HAP1.out.versions.first())
-
-    YAHS_HAP2 (
         ch_yahs_hap2_in,
-        ".1.yahs.hap2"
+        ch_bamtobed_hap1_in,
+        ch_bamtobed_hap2_in,
+        ch_fasta_index_hap1,
+        ch_fasta_index_hap2,
+        ch_hap1_contigs,  // Add HIFIASM contigs for SALSA
+        ch_hap2_contigs,  // Add HIFIASM contigs for SALSA
+        params.scaffolder  // 'yahs' or 'salsa'
     )
-    ch_versions = ch_versions.mix(YAHS_HAP2.out.versions.first())
+    ch_versions = ch_versions.mix(SCAFFOLDING.out.versions.first())
 
     //
-    // MODULE: Run Fcsgx
+    // SUBWORKFLOW: Run decontamination pipeline
     //
-    FCS_FCSGX_HAP1 (
-        YAHS_HAP1.out.scaffolds_fasta,
+    DECONTAMINATION (
+        SCAFFOLDING.out.hap1_scaffolds,
+        SCAFFOLDING.out.hap2_scaffolds,
         params.gxdb,
-        ".1.yahs.hap1.NCBI"
+        scaffolder_suffix
     )
-    ch_versions = ch_versions.mix(FCS_FCSGX_HAP1.out.versions.first())
-
-    FCS_FCSGX_HAP2 (
-        YAHS_HAP2.out.scaffolds_fasta,
-        params.gxdb,
-        ".1.yahs.hap2.NCBI"
-    )
-    ch_versions = ch_versions.mix(FCS_FCSGX_HAP2.out.versions.first())
-
-    FCSGX_CLEANGENOME_HAP1 (
-        YAHS_HAP1.out.scaffolds_fasta.join(FCS_FCSGX_HAP1.out.fcs_gx_report)
-    )
-
-    FCSGX_CLEANGENOME_HAP2 (
-        YAHS_HAP2.out.scaffolds_fasta.join(FCS_FCSGX_HAP2.out.fcs_gx_report)
-    )
-
-    //
-    // MODULE: Run Tiara
-    //
-    TIARA_TIARA_HAP1 (
-        FCSGX_CLEANGENOME_HAP1.out.cleaned,
-        ".1.yahs.hap1.tiara"
-    )
-    ch_versions = ch_versions.mix(TIARA_TIARA_HAP1.out.versions.first())
-
-    TIARA_TIARA_HAP2 (
-        FCSGX_CLEANGENOME_HAP2.out.cleaned,
-        ".1.yahs.hap2.tiara"
-    )
-    ch_versions = ch_versions.mix(TIARA_TIARA_HAP2.out.versions.first())
-
-    //
-    // MODULE: Run BBmap filterbyname
-    //
-    ch_bbmap_filterbyname_hap1_in = FCSGX_CLEANGENOME_HAP1.out.cleaned.join(TIARA_TIARA_HAP1.out.classifications)
-    ch_bbmap_filterbyname_hap2_in = FCSGX_CLEANGENOME_HAP2.out.cleaned.join(TIARA_TIARA_HAP2.out.classifications)
-
-    BBMAP_FILTERBYNAME_HAP1 (
-        ch_bbmap_filterbyname_hap1_in,
-        "2.tiara.hap1"
-    )
-    ch_versions = ch_versions.mix(BBMAP_FILTERBYNAME_HAP1.out.versions.first())
-
-    BBMAP_FILTERBYNAME_HAP2 (
-        ch_bbmap_filterbyname_hap2_in,
-        "2.tiara.hap2"
-    )
-    ch_versions = ch_versions.mix(BBMAP_FILTERBYNAME_HAP2.out.versions.first())
+    ch_versions = ch_versions.mix(DECONTAMINATION.out.versions.first())
 
     
     //
@@ -454,8 +426,8 @@ workflow REFGENOMES {
     //
 
 
-    ch_gfastats2_hap1_in = BBMAP_FILTERBYNAME_HAP1.out.scaffolds.join(GENOMESCOPE2.out.summary)
-    ch_gfastats2_hap2_in = BBMAP_FILTERBYNAME_HAP2.out.scaffolds.join(GENOMESCOPE2.out.summary)
+    ch_gfastats2_hap1_in = DECONTAMINATION.out.hap1_clean_scaffolds.join(GENOMESCOPE2.out.summary)
+    ch_gfastats2_hap2_in = DECONTAMINATION.out.hap2_clean_scaffolds.join(GENOMESCOPE2.out.summary)
 
 
     GFASTATS_HAP1_FINAL (
@@ -491,11 +463,11 @@ workflow REFGENOMES {
     // MODULE: Run Busco again
     //
 
-    busco_final_assemblies_ch=BBMAP_FILTERBYNAME_HAP1.out.scaffolds.join(BBMAP_FILTERBYNAME_HAP2.out.scaffolds)
-            .map {
-            meta, hap1_scaffolds, hap2_scaffolds ->
-                return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
-        }
+    busco_final_assemblies_ch = DECONTAMINATION.out.hap1_clean_scaffolds.join(DECONTAMINATION.out.hap2_clean_scaffolds)
+    .map {
+        meta, hap1_scaffolds, hap2_scaffolds ->
+            return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
+    }
 
     BUSCO_BUSCO_FINAL (
         busco_final_assemblies_ch,
@@ -518,11 +490,11 @@ workflow REFGENOMES {
     //
     // MODULE: Rename, and concatenate scaffolds
     //
-    ch_filtered_scaffolds = BBMAP_FILTERBYNAME_HAP1.out.scaffolds.join(BBMAP_FILTERBYNAME_HAP2.out.scaffolds)
+    ch_filtered_scaffolds = DECONTAMINATION.out.hap1_clean_scaffolds.join(DECONTAMINATION.out.hap2_clean_scaffolds)
         .map {
-            meta, hap1_scaffolds, hap2_scaffolds ->
-                return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
-        }
+        meta, hap1_scaffolds, hap2_scaffolds ->
+            return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
+    }
 
     CAT_SCAFFOLDS (
        ch_filtered_scaffolds,
@@ -558,19 +530,19 @@ workflow REFGENOMES {
     // SUBWORFLOW: Run omnic again
     //
 
-    ch_omnic_hap1_in = CAT_HIC.out.cat_files.join(CAT_SCAFFOLDS.out.hap1_scaffold)
+    ch_omnic_hap1_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.hap1_scaffold)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]
         }
 
-    ch_omnic_hap2_in = CAT_HIC.out.cat_files.join(CAT_SCAFFOLDS.out.hap2_scaffold)
+    ch_omnic_hap2_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.hap2_scaffold)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]
         }
 
-    ch_omic_dual_in = CAT_HIC.out.cat_files.join(CAT_SCAFFOLDS.out.cat_file)
+    ch_omic_dual_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.cat_file)
             .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]

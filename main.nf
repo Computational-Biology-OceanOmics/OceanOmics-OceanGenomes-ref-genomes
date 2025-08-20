@@ -11,6 +11,25 @@ nextflow.enable.dsl = 2
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    PARAMETER VALIDATION
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+// Validate scaffolder parameter
+def valid_scaffolders = ['yahs', 'salsa']
+if (!valid_scaffolders.contains(params.scaffolder)) {
+    error "❌ Invalid scaffolder: '${params.scaffolder}'. Valid options: ${valid_scaffolders.join(', ')}"
+}
+
+log.info """
+🧬 OceanGenomes Reference Genomes Pipeline
+==========================================
+Scaffolder: ${params.scaffolder}
+==========================================
+"""
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT FUNCTIONS / MODULES / SUBWORKFLOWS / WORKFLOWS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */

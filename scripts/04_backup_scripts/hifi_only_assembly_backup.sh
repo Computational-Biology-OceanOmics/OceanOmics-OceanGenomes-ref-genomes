@@ -4,7 +4,7 @@
 #SBATCH --partition=work
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=24:00:00
+#SBATCH --time=12:00:00
 #SBATCH --export=NONE
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --mail-user=lauren.huet@uwa.edu.au
@@ -29,13 +29,13 @@ fi
 
 # Tar kmer directories
 rm -f success
-tar -czvf ${OG}/02-kmer-profiling/meryl/${OG}_${asm_ver}.meryldb.tar.gz -C ${OG}/02-kmer-profiling/meryl ${OG}_${asm_ver}.meryldb && touch success
+tar -czvf ${OG}/02-kmer-profiling/meryl/${OG}_${date}.${asm_ver}.meryl.tar.gz -C ${OG}/02-kmer-profiling/meryl ${OG}_${date}.${asm_ver}.meryl && touch success
 
 wait
 
 # Remove only if tar was successful and the file exists
 if [[ -f success ]]; then
-  target_dir="${OG}/02-kmer-profiling/meryl/${OG}_${asm_ver}.meryldb"
+  target_dir="${OG}/02-kmer-profiling/meryl/${OG}_${date}.${asm_ver}.meryl"
   if [[ -d $target_dir ]]; then
     rm -rf "$target_dir"
     echo "Removed directory: $target_dir"
@@ -51,14 +51,14 @@ rclone copy ${OG}/01-data-processing/hifiadaptfilt/${OG}_${date}.${asm_ver}/ paw
 
 ##back up kmer profilling (genomescope and meryl)
 rclone copy ${OG}/02-kmer-profiling/genomescope2/ pawsey0964:oceanomics-refassemblies/${OG}/genomescope --checksum --progress
-rclone copy ${OG}/02-kmer-profiling/${OG}_${asm_ver}.meryldb.tar.gz/ pawsey0964:oceanomics-refassemblies/${OG}/meryl --checksum --progress
+rclone copy ${OG}/02-kmer-profiling/${OG}_${date}.${asm_ver}.meryl.tar.gz/ pawsey0964:oceanomics-refassemblies/${OG}/meryl --checksum --progress
 
 #Back up hifiasm assemblies and gfa stats
 # 1.Assemblies
 rclone copy ${OG}/03-assembly/gfastats-hifi/${OG}_${date}.${asm_ver}.0.hifiasm.a_ctg.fasta  pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/assembly --checksum --progress
 rclone copy ${OG}/03-assembly/gfastats-hifi/${OG}_${date}.${asm_ver}.0.hifiasm.p_ctg.fasta pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/assembly --checksum --progress
 rclone copy ${OG}/03-assembly/hifi/${OG}_${date}.${asm_ver}.0.hifiasm.p_ctg.gfa pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/assembly --checksum --progress
-rclone copy ${OG}/03-assembly/hifi/${OG}_${date}.${asm_ver}.0.hifiasm.p_ctg.gfa pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/assembly --checksum --progress
+rclone copy ${OG}/03-assembly/hifi/${OG}_${date}.${asm_ver}.0.hifiasm.a_ctg.gfa pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/assembly --checksum --progress
 
 #gfastats 
 rclone copy ${OG}/03-assembly/gfastats-hifi/${OG}_${date}.${asm_ver}.0.hifiasm.a_ctg.assembly_summary.txt pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/gfastats --checksum --progress
