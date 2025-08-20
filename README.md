@@ -71,6 +71,7 @@ nextflow run Computational-Biology-OceanOmics/OceanGenomes-refgenomes \
    --buscodb /path/to/buscodb \
    --gxdb /path/to/gxdb \
    --binddir /scratch \
+   --scaffolder <yahs or salsa>
    --tempdir <tempdir>
    -c pawsey_profile.config \
     -resume \
