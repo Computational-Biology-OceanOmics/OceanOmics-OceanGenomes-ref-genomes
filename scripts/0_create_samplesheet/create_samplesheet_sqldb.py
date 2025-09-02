@@ -66,8 +66,8 @@ smp AS (
 )
 SELECT DISTINCT ON (p.og_id)
   p.og_id AS sample,
-  '/scratch/pawsey0964/lhuet/ref-gen/'||p.og_id||'/hifi' AS hifi_dir,
-  '/scratch/pawsey0964/lhuet/ref-gen/'||p.og_id||'/hic'  AS hic_dir,
+  '/scratch/pawsey0964/$USER/ref-gen/'||p.og_id||'/hifi' AS hifi_dir,
+  '/scratch/pawsey0964/$USER/ref-gen/'||p.og_id||'/hic'  AS hic_dir,
   CASE WHEN rg.og_id IS NOT NULL THEN 'hic2' ELSE 'hic1' END AS version,
   CASE WHEN ls.seq_date IS NOT NULL THEN 'v'||to_char(ls.seq_date,'YYMMDD') END AS date,
   p.og_id AS tolid,
