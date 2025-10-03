@@ -6,3 +6,23 @@ results/
 testing/
 testing*
 *.pyc
+
+# Ignore staging input files
+scripts/01_stage_data/to_download-hic.txt
+scripts/01_stage_data/to_download-pacbio.txt
+
+# Ignore compiled results
+scripts/03_compile_results/BUSCO_compiled_results.tsv
+scripts/03_compile_results/BUSCO_compiled_results_split.tsv
+scripts/03_compile_results/assembly_gfastats_report.txt
+scripts/03_compile_results/final_gfastats_report.txt
+scripts/03_compile_results/final_omnic_stats_report.txt
+scripts/03_compile_results/genomescope_compiled_results.tsv
+scripts/03_compile_results/gfa_compiled_results_split.tsv
+scripts/03_compile_results/gfastats_report.txt
+scripts/03_compile_results/hifiadaptorfilt_stats_summary.tsv
+scripts/03_compile_results/merqury.completeness.stats.tsv
+scripts/03_compile_results/merqury.qv.stats.tsv
+scripts/03_compile_results/merqury_completeness_compiled_results_split.tsv
+scripts/03_compile_results/merqury_qv_compiled_results_split.tsv
+scripts/03_compile_results/omnic_compiled_results_split.tsv

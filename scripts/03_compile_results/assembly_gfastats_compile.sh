@@ -1,6 +1,6 @@
 #!/bin/bash
 # Print column names
-base_dir="/scratch/pawsey0964/lhuet/refgenomes/OG*" 
+base_dir="/scratch/pawsey0964/tpeirce/ref-gen/OG*" 
 echo -e "Filename\t# contigs\tContig N50\tContig N50 (Mb)\t# scaffolds\tScaffold N50\tScaffold N50 (Mb)\tLargest scaffold\tLargest scaffold (Mb)\tTotal scaffold length\tTotal scaffold length (Mb)\tGC content %" > assembly_gfastats_report.txt
 
 tsv_files=$(find $base_dir -name "*hap*.assembly_summary.txt")

@@ -39,7 +39,7 @@ busco_db=actinopterygii_odb10
 
 # Define paths
 RUNDIR=$(pwd)
-LPATH=/scratch/pawsey0964/lhuet/busco_db
+LPATH=/scratch/pawsey0964/tpeirce/busco_db
 SLIMSUITE=/software/projects/pawsey0812/rjedwards/slimsuite
 
 echo "sample: $sample"
@@ -64,7 +64,7 @@ for GENOME in ../*.fa; do
 
   # Run Compleasm
   if [ ! -f "$RUN/run_$busco_db/full_table.tsv" ]; then
-    singularity run $SING/compleasm:0.2.6.sif compleasm run -a $GENOME -o $RUN -t 96 -l $busco_db -L $LPATH
+    singularity run /software/projects/pawsey0812/singularity/compleasm:0.2.6.sif compleasm run -a $GENOME -o $RUN -t 96 -l $busco_db -L $LPATH 
     
     # Cleanup Compleasm
     cp -v $RUN/summary.txt $GENBASE.$busco_db.summary.txt
@@ -89,7 +89,7 @@ for GENOME in ../*.fa; do
     # Replace the first four bases with GATC
     sed 's/^[ACGT][ACGT][ACGT][ACGT]/GATC/' "$GENOME" > "$PREFIX.tmp.fasta"
     # Predict rRNA sequences using Barrnap
-    singularity run "$SING/barrnap:0.9.sif" barrnap --kingdom euk -o "$PREFIX.rrna.fa" --threads 16 < "$PREFIX.tmp.fasta" | tee "$PREFIX.rrna.gff"
+    singularity run "/software/projects/pawsey0812/singularity/barrnap:0.9.sif" barrnap --kingdom euk -o "$PREFIX.rrna.fa" --threads 16 < "$PREFIX.tmp.fasta" | tee "$PREFIX.rrna.gff"
     # Remove temporary file
     rm -v "$PREFIX.tmp.fasta"
     # Filter out 5S and partial sequences
@@ -114,9 +114,9 @@ mkdir $RUNDIR/gendata; cd $RUNDIR/gendata
 for GENOME in ../*.fa; do
   GENBASE=$(basename "${GENOME/.fa/}")
   if [ ! -f "$GENBASE.tidk.tsv" ]; then
-    singularity run "$SING/depthsizer:v1.9.0.sif" python "$SLIMSUITE/tools/telociraptor.py" tweak=F seqin="$GENOME" basefile="$GENBASE" i=-1 backups=F telonull=T
-    singularity run "$SING/depthsizer:v1.9.0.sif" python "$SLIMSUITE/tools/telociraptor.py" tweak=T seqin="$GENOME" basefile="$GENBASE" i=-1 backups=F log="$GENBASE.tweak"
-    singularity run "$SING/tidk:0.2.31.sif" tidk search -o "$GENBASE" -s AACCCT -d ./ -e tsv "$GENOME"
+    singularity run "/software/projects/pawsey0812/singularity/depthsizer:v1.9.0.sif" python "$SLIMSUITE/tools/telociraptor.py" tweak=F seqin="$GENOME" basefile="$GENBASE" i=-1 backups=F telonull=T
+    singularity run "/software/projects/pawsey0812/singularity/depthsizer:v1.9.0.sif" python "$SLIMSUITE/tools/telociraptor.py" tweak=T seqin="$GENOME" basefile="$GENBASE" i=-1 backups=F log="$GENBASE.tweak"
+    singularity run "/software/projects/pawsey0812/singularity/tidk:0.2.31.sif" tidk search -o "$GENBASE" -s AACCCT -d ./ -e tsv "$GENOME"
     awk '$3 > 9 || $4 > 9' "${GENBASE}_telomeric_repeat_windows.tsv" > "$GENBASE.tidk.tsv"
   fi
   cp -v "../rdna/$GENBASE.rrna.csv" "$GENBASE.ft.csv"
@@ -148,7 +148,7 @@ generate_fofn "ft.csv" "ft"
 # Run ChromSyn
 cd $RUNDIR
 SETTINGS="pdfwidth=40 orphans=FALSE minregion=0 minbusco=3 ticks=1e7"
-singularity run $SING/depthsizer:v1.9.0.sif Rscript $SLIMSUITE/libraries/r/chromsyn.R $SETTINGS basefile=$sample.hapsyn | tee $sample.hapsyn.log
+singularity run /software/projects/pawsey0812/singularity/depthsizer:v1.9.0.sif Rscript $SLIMSUITE/libraries/r/chromsyn.R $SETTINGS basefile=$sample.hapsyn | tee $sample.hapsyn.log
 
 # ---------------
 # Backup image to Acacia

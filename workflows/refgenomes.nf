@@ -131,21 +131,7 @@ workflow REFGENOMES {
     )
 
 
-    MITOHIFI_MITOHIFI (
-        CAT_HIFI.out.hifi_cat,
-        ch_mito,
-        MITOHIFI_FINDMITOREFERENCE.out.fasta.map { meta, fasta -> return [ fasta ] },
-        MITOHIFI_FINDMITOREFERENCE.out.gb.map { meta, gb -> return [ gb ] },
-       "r",
-        "hifi",
-        "v3mitohifi"
-    )
 
-   //  Collect failed samples
-  //  failed_samples = MITOHIFI_MITOHIFI.out.failed_samples.collectFile(name: 'failed_mitohifi_samples.txt')
-
-    // You can add additional steps here to process the failed samples if needed
-   // failed_samples.view { "MitoHiFi failed for the following samples:\n${it.text}" }
     //
     // MODULE: Run FastQC on HiFi fastqc files
     //

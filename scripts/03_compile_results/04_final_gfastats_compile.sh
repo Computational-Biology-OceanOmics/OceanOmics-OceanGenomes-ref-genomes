@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Set base directory
-base_dir="/scratch/pawsey0964/lhuet/refgenomes/OG*"
+base_dir="/scratch/pawsey0964/tpeirce/ref-gen/OG*"
 
 # Output file with SQL-compatible column headers
 echo -e "filename\tnum_contigs\tcontig_n50\tcontig_n50_size_mb\tnum_scaffolds\tscaffold_n50\tscaffold_n50_size_mb\tlargest_scaffold\tlargest_scaffold_size_mb\ttotal_scaffold_length\ttotal_scaffold_length_size_mb\tgc_content_percent" > final_gfastats_report.txt
 
 # Find input files
-tsv_files=$(find $base_dir -name "*scaffolds.assembly_summary.txt*")
+tsv_files=$(find $base_dir -name "*hap*.assembly_summary.txt")
 
 # Process each file
 for file in $tsv_files; do

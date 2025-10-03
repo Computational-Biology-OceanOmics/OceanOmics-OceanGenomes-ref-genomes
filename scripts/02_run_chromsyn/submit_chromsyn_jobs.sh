@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Path to your sample sheet
-SAMPLE_SHEET="/scratch/pawsey0964/lhuet/ref-gen/yahs/OceanOmics-OceanGenomes-ref-genomes/assets/samplesheet.csv"
+SAMPLE_SHEET="/scratch/pawsey0964/tpeirce/_REFGENOMES/OceanOmics-OceanGenomes-ref-genomes/assets/samplesheet.csv"
 
 # Path to the chromsyn.sh script
-CHROMSYN_SCRIPT="/scratch/pawsey0964/lhuet/ref-gen/yahs/OceanOmics-OceanGenomes-ref-genomes/scripts/02_run_chromsyn/chromsyn.sh"
+CHROMSYN_SCRIPT="/scratch/pawsey0964/tpeirce/_REFGENOMES/OceanOmics-OceanGenomes-ref-genomes/scripts/02_run_chromsyn/chromsyn.sh"
 
 # Dry-run mode flag
 DRY_RUN=false  # Set to true to test without submitting jobs
@@ -14,7 +14,7 @@ tail -n +2 "$SAMPLE_SHEET" | while IFS=',' read -r sample hifi_dir hic_dir versi
 
     echo "Processing sample: $sample, date: $date, version: $version"
 
-    OUTPUT_DIR="/scratch/pawsey0964/lhuet/ref-gen/yahs/${sample}/09-chromsyn"
+    OUTPUT_DIR="/scratch/pawsey0964/tpeirce/ref-gen/${sample}/09-chromsyn"
     echo "Creating directory: $OUTPUT_DIR"
     [[ "$DRY_RUN" == "false" ]] && mkdir -p "$OUTPUT_DIR"
 

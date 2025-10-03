@@ -1,66 +1,127 @@
+#!/usr/bin/env python3
+# singularity run $SING/psycopg2:0.1.sif python 03a_push_busco_results_to_sqldb.py ~/postgresql_details/oceanomics.cfg
 import psycopg2
 import pandas as pd
 import numpy as np  # Required for handling infinity values
+import configparser
+import sys
+from pathlib import Path  # ✅ you used Path but didn't import it
 
+# -------------------------------
+# Load DB credentials from .cfg
+# -------------------------------
+def load_db_config(config_file):
+    if not Path(config_file).exists():
+        raise FileNotFoundError(f"❌ Config file '{config_file}' does not exist.")
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    if not config.has_section('postgres'):
+        raise ValueError("❌ Missing [postgres] section in config file.")
+    required_keys = ['dbname', 'user', 'password', 'host', 'port']
+    for key in required_keys:
+        if not config.has_option('postgres', key):
+            raise ValueError(f"❌ Missing '{key}' in [postgres] section of config file.")
+    return {
+        'dbname': config.get('postgres', 'dbname'),
+        'user': config.get('postgres', 'user'),
+        'password': config.get('postgres', 'password'),
+        'host': config.get('postgres', 'host'),
+        'port': config.getint('postgres', 'port')
+    }
 
-# PostgreSQL connection parameters
-db_params = {
-    'dbname': 'oceanomics',
-    'user': 'postgres',
-    'password': 'oceanomics',
-    'host': '203.101.227.69',
-    'port': 5432
-}
+# --- tiny helpers (just enough to be safe) ---
+def parse_int(val):
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return None
+    s = str(val).strip().replace(",", "")
+    if s == "" or s.lower() == "nan":
+        return None
+    try:
+        return int(float(s))
+    except ValueError:
+        return None
 
+def parse_float(val):
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return None
+    s = str(val).strip().replace(",", "").replace("%", "")
+    if s == "" or s.lower() == "nan":
+        return None
+    try:
+        return float(s)
+    except ValueError:
+        return None
 
+def safe_dot_part(s, idx):
+    parts = s.split(".")
+    return parts[idx] if len(parts) > idx else None
 
-# File containing BUSCO data
+def safe_us_part(s, us_idx, dot_idx=0):
+    base = safe_dot_part(s, dot_idx) or ""
+    us = base.split("_")
+    return us[us_idx] if len(us) > us_idx else None
 
-BUSCO_compiled_path = f"BUSCO_compiled_results.tsv"  # if your file structure is different this might not work.
+# -------------------------------
+# Args & input
+# -------------------------------
+config_file = sys.argv[1]
+BUSCO_compiled_path = "BUSCO_compiled_results.tsv"
 
-# Import BUSCO data
 print(f"Importing data from {BUSCO_compiled_path}")
-
-# Load data
 busco = pd.read_csv(BUSCO_compiled_path, sep="\t")
 
-# Split the 'sample' column up so we have og_id, seq_date, stage and haplotype
-# Ensure 'sample' column exists
-if 'sample' in busco.columns:
-    # Split 'sample' into 4 new columns
-    busco['og_id'] = busco['sample'].str.split('.').str[0].str.split('_').str[0]
-    busco['seq_date'] = busco['sample'].str.split('.').str[0].str.split('_').str[1].str.lstrip('v')
-    busco['stage'] = busco['sample'].str.split('.').str[2].astype(int)
-    busco['haplotype'] = busco['sample'].str.split('.').str[4].str.split('_').str[0]
+# -------------------------------
+# Derive og_id, seq_date, stage, haplotype
+# -------------------------------
+if 'sample' not in busco.columns:
+    raise ValueError("❌ 'sample' column not found in the input file.")
 
+samp = busco['sample'].astype(str)
+busco['og_id']     = samp.apply(lambda x: safe_us_part(x, 0, dot_idx=0))
+busco['seq_date']  = samp.apply(lambda x: (safe_us_part(x, 1, dot_idx=0) or "").lstrip('v') or None)
+busco['stage']     = samp.apply(lambda x: parse_int(safe_dot_part(x, 2)))
+busco['haplotype'] = samp.apply(lambda x: safe_us_part(x, 0, dot_idx=4))
 
-    # Save the updated DataFrame back to a tab-delimited file
-    output_file = f"BUSCO_compiled_results_split.tsv"
-    busco.to_csv(output_file, sep="\t", index=False)
-    
-    print("File successfully processed! New columns added.")
-else:
-    print("Error: 'sample' column not found in the input file.")
+# Optional: keep your side-effect of saving the split file
+output_file = "BUSCO_compiled_results_split.tsv"
+busco.to_csv(output_file, sep="\t", index=False)
+print("File successfully processed! New columns added.")
 
-
-# Print summary of changes
 print("\n🔍 Final dataset summary:")
 print(busco.describe())
 
+# -------------------------------
+# DB upsert
+# -------------------------------
+conn = None
+cursor = None
 try:
-    # Connect to PostgreSQL
+    db_params = load_db_config(config_file)
     conn = psycopg2.connect(**db_params)
     cursor = conn.cursor()
 
-    row_count = 0  # Track number of processed rows
+    row_count = 0
 
-    for index, row in busco.iterrows():
-        row_dict = row.to_dict()
+    for _, row in busco.iterrows():
+        params = {
+            "og_id": row.get("og_id"),
+            "seq_date": row.get("seq_date"),
+            "stage": parse_int(row.get("stage")),  # INTEGER
+            "haplotype": row.get("haplotype"),
+            "dataset": row.get("dataset"),
+            "complete": parse_float(row.get("complete")),
+            "single_copy": parse_float(row.get("single_copy")),
+            "multi_copy": parse_float(row.get("multi_copy")),
+            "fragmented": parse_float(row.get("fragmented")),
+            "missing": parse_float(row.get("missing")),
+            "n_markers": parse_int(row.get("n_markers")),
+            "internal_stop_codon_percent": parse_float(row.get("internal_stop_codon_percent")),
+            "scaffold_n50_bus": parse_int(row.get("scaffold_n50_bus")),
+            "contigs_n50_bus": parse_int(row.get("contigs_n50_bus")),
+            "percent_gaps": parse_float(row.get("percent_gaps")),
+            "number_of_scaffolds": parse_int(row.get("number_of_scaffolds")),
+        }
 
-        # Extract primary key values
-        og_id, seq_date, stage, haplotype = row["og_id"], row["seq_date"], row["stage"], row["haplotype"]
-
-        # UPSERT: Insert if not exists, otherwise update
         upsert_query = """
         INSERT INTO ref_genomes (
             og_id, seq_date, stage, haplotype, dataset, complete, single_copy, multi_copy, fragmented,
@@ -68,8 +129,7 @@ try:
         )
         VALUES (
             %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(dataset)s, %(complete)s, %(single_copy)s, %(multi_copy)s, %(fragmented)s,
-            %(missing)s, %(n_markers)s, %(internal_stop_codon_percent)s, %(scaffold_n50_bus)s, %(contigs_n50_bus)s, %(percent_gaps)s,  
-            %(number_of_scaffolds)s
+            %(missing)s, %(n_markers)s, %(internal_stop_codon_percent)s, %(scaffold_n50_bus)s, %(contigs_n50_bus)s, %(percent_gaps)s, %(number_of_scaffolds)s
         )
         ON CONFLICT (og_id, seq_date, stage, haplotype) DO UPDATE SET
             dataset = EXCLUDED.dataset,
@@ -85,41 +145,19 @@ try:
             percent_gaps = EXCLUDED.percent_gaps,
             number_of_scaffolds = EXCLUDED.number_of_scaffolds;
         """
-        params = {
-            "og_id": row_dict["og_id"],  # TEXT / VARCHAR
-            "seq_date": row_dict["seq_date"],  # TEXT or DATE
-            "stage": row_dict["stage"],  # TEXT or DATE
-            "haplotype": row_dict["haplotype"],  # TEXT or DATE
-            "dataset": row_dict["dataset"],  # TEXT or DATE
-            "complete": float(row_dict["complete"]) if row_dict["complete"] not in [None, ""] else None,  # FLOAT
-            "single_copy": float(row_dict["single_copy"]) if row_dict["single_copy"] not in [None, ""] else None,  # FLOAT
-            "multi_copy": float(row_dict["multi_copy"]) if row_dict["multi_copy"] not in [None, ""] else None,  # FLOAT
-            "fragmented": float(row_dict["fragmented"]) if row_dict["fragmented"] not in [None, ""] else None,  # FLOAT        
-            "missing": float(row_dict["missing"]) if row_dict["missing"] not in [None, ""] else None,  # FLOAT
-            "n_markers": None if pd.isna(row_dict["n_markers"]) else int(row_dict["n_markers"]),
-            "internal_stop_codon_percent": float(row_dict["internal_stop_codon_percent"]) if row_dict["internal_stop_codon_percent"] else None,  # FLOAT
-            "scaffold_n50_bus": None if pd.isna(row_dict["scaffold_n50_bus"]) else int(row_dict["scaffold_n50_bus"]),  
-            "contigs_n50_bus": None if pd.isna(row_dict["contigs_n50_bus"]) else int(row_dict["contigs_n50_bus"]),
-            "percent_gaps": float(str(row_dict["percent_gaps"]).rstrip('%')) if row_dict["percent_gaps"] not in [None, "", "nan", "NaN", float('nan')] and not pd.isna(row_dict["percent_gaps"]) else None,    
-            "number_of_scaffolds": None if pd.isna(row_dict["number_of_scaffolds"]) else int(row_dict["number_of_scaffolds"]),
-        }
-
-        # Debugging Check
-        print(f"Number of columns in query: {upsert_query.count('%s')}")
-        print(f"Column names in DataFrame: {busco.columns.tolist()}")
-        print("row:", row_dict)
-        print("params:", params)
 
         cursor.execute(upsert_query, params)
-        row_count += 1  
-
+        row_count += 1
         conn.commit()
         print(f"✅ Successfully processed {row_count} rows!")
 
 except Exception as e:
-    conn.rollback()
+    if conn:
+        conn.rollback()
     print(f"❌ Error: {e}")
 
 finally:
-    cursor.close()
-    conn.close()
+    if cursor:
+        cursor.close()
+    if conn:
+        conn.close()

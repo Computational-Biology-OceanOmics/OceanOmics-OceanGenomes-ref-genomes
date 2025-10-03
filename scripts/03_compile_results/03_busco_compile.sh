@@ -1,6 +1,6 @@
 #!/bin/bash
 output_file="BUSCO_compiled_results.tsv"
-base_dir="/scratch/pawsey0964/lhuet/refgenomes/OG*" 
+base_dir="/scratch/pawsey0964/tpeirce/ref-gen/OG*" 
 echo -e "sample\tdataset\tcomplete\tsingle_copy\tmulti_copy\tfragmented\tmissing\tn_markers\tinternal_stop_codon_percent\tscaffold_n50_bus\tcontigs_n50_bus\tpercent_gaps\tnumber_of_scaffolds" > $output_file
 
 
