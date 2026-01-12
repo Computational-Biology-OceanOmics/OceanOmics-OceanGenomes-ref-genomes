@@ -562,7 +562,7 @@ workflow REFGENOMES {
 
     PRETEXTMAP_HAP_1 (OMNIC_HAP1_FINAL.out.omnic_bam,
                         "hap1",
-                        "2.tiara.")
+                        "2.tiara")
     
     ch_versions = ch_versions.mix(PRETEXTMAP_HAP_1.out.versions.first())
     
