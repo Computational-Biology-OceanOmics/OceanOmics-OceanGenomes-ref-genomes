@@ -92,7 +92,7 @@ For details about the output files and reports, please refer to the
 
 ## Credits
 
-Computational-Biology-OceanOmics/OceanOmics-OceanGenomes-ref-genomes was originally adapted from the Vertebrate Genome project Galaxy pipeline (https://galaxyproject.org/projects/vgp/) by Emma de Jong and was converted to Nextflow by Adam Bennett and Lauren Huet. This version was built on top of the nf-core template.
+Computational-Biology-OceanOmics/OceanOmics-OceanGenomes-ref-genomes was originally adapted from the Vertebrate Genome project Galaxy pipeline (https://galaxyproject.org/projects/vgp/) by Emma de Jong and was converted to Nextflow by Lauren Huet and Adam Bennett. This version was built on top of the nf-core template.
 
 ## Citations
 
