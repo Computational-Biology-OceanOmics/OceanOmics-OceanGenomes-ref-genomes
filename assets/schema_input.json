@@ -46,7 +46,13 @@
             "species": {
                 "type": "string",
                 "meta": ["species"]
-            }
+            },
+            "teloseq": {
+                "type": "string",
+                "default": "TTAGGG",
+                "description": "Telomere sequence motif to search for",
+                "help_text": "Common motifs: TTAGGG (vertebrates), TTTAGGG (plants), TTAGG (insects)"
+        }
         },
         "required": ["sample", "hifi_dir", "version", "date", "tolid", "taxid", "species"]
     }

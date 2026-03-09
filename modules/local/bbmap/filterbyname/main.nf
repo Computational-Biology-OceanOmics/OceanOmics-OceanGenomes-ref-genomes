@@ -8,7 +8,7 @@ process BBMAP_FILTERBYNAME {
         'biocontainers/bbmap:39.06--h92535d8_1' }"
 
     input:
-    tuple val(meta), path(fasta), path(contig_list)
+    tuple val(meta), path(fasta), path(contig_removal)
     val(suffix)
 
     output:
@@ -25,7 +25,7 @@ process BBMAP_FILTERBYNAME {
     filterbyname.sh \\
         in="$fasta" \\
         out="${prefix}.${suffix}_scaffolds.fa" \\
-        names="$contig_list" \\
+        names="$contig_removal" \\
         exclude \\
         $args
 

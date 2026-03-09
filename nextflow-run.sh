@@ -5,6 +5,7 @@ nextflow run main.nf \
     -profile singularity \
     --input /scratch/pawsey0964/lhuet/ref-gen/OceanOmics-OceanGenomes-ref-genomes/assets/samplesheet.csv \
     --outdir /scratch/pawsey0964/lhuet/ref-gen \
+    --assembly_mode hifi_hic \
     --scaffolder yahs \
     --buscodb /scratch/references/busco_db/actinopterygii_odb10 \
     --gxdb /scratch/references/Foreign_Contamination_Screening/gxdb \

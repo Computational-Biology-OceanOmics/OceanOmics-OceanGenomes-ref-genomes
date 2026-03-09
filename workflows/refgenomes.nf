@@ -11,9 +11,9 @@ include { FASTP as FASTP_HIC                             } from '../modules/nf-c
 include { MERYL_COUNT                                    } from '../modules/nf-core/meryl/count/main'
 include { MERYL_HISTOGRAM                                } from '../modules/nf-core/meryl/histogram/main'
 include { GENOMESCOPE2                                   } from '../modules/nf-core/genomescope2/main'
-//include { HIFIASM1 as HIFIASM_SOLO                       } from '../modules/local/hifiasm1/main'
-//include { GFASTATS as GFASTATS_HIFI_PRIMARY              } from '../modules/nf-core/gfastats/main'
-//include { GFASTATS as GFASTATS_HIFI_ALT                  } from '../modules/nf-core/gfastats/main'
+include { HIFIASM1 as HIFIASM_SOLO                       } from '../modules/local/hifiasm1/main'
+include { GFASTATS as GFASTATS_HIFI_PRIMARY              } from '../modules/nf-core/gfastats/main'
+include { GFASTATS as GFASTATS_HIFI_ALT                  } from '../modules/nf-core/gfastats/main'
 include { CAT_HIC                                        } from '../modules/local/cat_hic/main'
 include { HIFIASM                                        } from '../modules/nf-core/hifiasm/main'
 include { GFASTATS as GFASTATS_HAP1                      } from '../modules/nf-core/gfastats/main'
@@ -32,7 +32,7 @@ include { BUSCO_GENERATEPLOT as BUSCO_GENERATEPLOT_FINAL } from '../modules/nf-c
 include { CAT_SCAFFOLDS                                  } from '../modules/local/cat_scaffolds/main'
 include { TAR                                            } from '../modules/local/tar/main'
 include { COVERAGE_TRACKS                                } from '../subworkflows/local/coverage_tracks/main'
-include { TIDK_EXPLORE                                   } from '../modules/nf-core/tidk/explore/main'
+include { TELO_FINDER                                   } from '../subworkflows/local/telo_finder/main'
 include { OMNIC as OMNIC_HAP1_FINAL                      } from '../modules/local/omnic/main'
 include { OMNIC as OMNIC_HAP2_FINAL                      } from '../modules/local/omnic/main'
 include { OMNIC as OMNIC_DUAL_HAP                        } from '../modules/local/omnic_dual/main'
@@ -45,18 +45,12 @@ include { PRETEXTSNAPSHOT as PRETEXTSNAPSHOT_HAP2        } from '../modules/nf-c
 include { PRETEXTSNAPSHOT as PRETEXTSNAPSHOT_DUAL_HAP    } from '../modules/nf-core/pretextsnapshot/main'
 include { PRETEXTGRAPH as PRETEXTGRAPH_GAPS              } from '../modules/local/pretextgraph/main'
 include { PRETEXTGRAPH as PRETEXTGRAPH_COVERAGE          } from '../modules/local/pretextgraph/main'
-include { MD5SUM as MD5SUM_OMNICS_HAP1                   } from '../modules/local/md5sum/main'
-include { MD5SUM as MD5SUM_OMNICS_HAP2                   } from '../modules/local/md5sum/main'
-include { MD5SUM as MD5SUM_YAHS_HAP1                     } from '../modules/local/md5sum/main'
-include { MD5SUM as MD5SUM_YAHS_HAP2                     } from '../modules/local/md5sum/main'
-//include { RCLONE                                         } from '../modules/local/rclone/main'
+include { PRETEXTGRAPH as PRETEXTGRAPH_TELOMERE          } from '../modules/local/pretextgraph/main'
 include { MULTIQC                                        } from '../modules/nf-core/multiqc/main'
 include { paramsSummaryMap                               } from 'plugin/nf-validation'
 include { paramsSummaryMultiqc                           } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML                         } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText                         } from '../subworkflows/local/utils_oceangenomesrefgenomes_pipeline'
-include { MITOHIFI_MITOHIFI                              } from '../modules/nf-core/mitohifi/mitohifi/main'
-include { MITOHIFI_FINDMITOREFERENCE                     } from '../modules/nf-core/mitohifi/findmitoreference/main'
 include { CAT_HIFI                                      } from '../modules/local/cat_hifi/main'
 
 /*
@@ -107,12 +101,6 @@ workflow REFGENOMES {
                 return [ meta, meta.species ]
         }
 
-    ch_mito = ch_samplesheet
-        .map { meta ->
-            meta = meta[0]
-            return [ meta.sample, meta.date ]
-    }
-
 
     //
     // MODULE: Run HiFiAdapterFilt
@@ -125,11 +113,6 @@ workflow REFGENOMES {
 
     CAT_HIFI (
         HIFIADAPTERFILT.out.reads)
-
-    MITOHIFI_FINDMITOREFERENCE (
-        ch_species
-    )
-
 
 
     //
@@ -169,57 +152,58 @@ workflow REFGENOMES {
     ch_versions = ch_versions.mix(GENOMESCOPE2.out.versions.first())
 
 
-    // 
-    // MODULE: Run hifi only assembly 
     //
+    // MODULE: Run hifi only assembly (conditional on assembly_mode)
+    //
+    if (params.assembly_mode == 'hifi_only') {
+        HIFIASM_SOLO(
+            HIFIADAPTERFILT.out.reads,
+            "0.hifiasm"
+        )
 
-   // HIFIASM_SOLO( 
-   //     HIFIADAPTERFILT.out.reads,
-   //     "0.hifiasm"
-   // )
+        //
+        // MODULE: gfa stats primary and alternate
+        //
+        ch_gfastats_hifi_only_primary = HIFIASM_SOLO.out.primary_contigs.join(GENOMESCOPE2.out.summary)
+        ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
 
-    ///
-    /// MODULE: gfa stats primary and alternate
-    ///
-  //  ch_gfastats_hifi_only_primary = HIFIASM_SOLO.out.primary_contigs.join(GENOMESCOPE2.out.summary)
-  //  ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
+        GFASTATS_HIFI_PRIMARY(
+            ch_gfastats_hifi_only_primary,
+            "fasta",
+            "",
+            "p_ctg",
+            "0.hifiasm",
+            [],
+            [],
+            [],
+            []
+        )
+        ch_versions = ch_versions.mix(GFASTATS_HIFI_PRIMARY.out.versions.first())
 
-
-   // GFASTATS_HIFI_PRIMARY (
-   //    ch_gfastats_hifi_only_primary,
-   //     "fasta",
-   //     "",
-   //     "p_ctg",
-  //      "0.hifiasm",
-   //     [],
-   //     [],
-   //     [],
-   //     []
-  //)
-  //      ch_versions = ch_versions.mix(GFASTATS_HIFI_PRIMARY.out.versions.first())
-
-   // ch_gfastats_hifi_only_alternate = HIFIASM_SOLO.out.alternate_contigs.join(GENOMESCOPE2.out.summary)
-
-   // GFASTATS_HIFI_ALT (
-   //     ch_gfastats_hifi_only_alternate,
-  //     "fasta",
-   //     "",
-  //     "a_ctg",
-   //     "0.hifiasm",
-  //      [],
-  //     [],
-  //      [],
-  //      []
-   // )
-   // ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
-
+        GFASTATS_HIFI_ALT(
+            ch_gfastats_hifi_only_alternate,
+            "fasta",
+            "",
+            "a_ctg",
+            "0.hifiasm",
+            [],
+            [],
+            [],
+            []
+        )
+        ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
+    }
 
     //
-    // MODULE: Concatenate Hi-C files together for cases when there is multiple R1 and multiple R2 files
+    // HiFi+HiC assembly mode: Run HiC-assisted assembly (conditional on assembly_mode)
     //
-    CAT_HIC (
-        ch_hic
-    )
+    if (params.assembly_mode == 'hifi_hic') {
+        //
+        // MODULE: Concatenate Hi-C files together for cases when there is multiple R1 and multiple R2 files
+        //
+        CAT_HIC (
+            ch_hic
+        )
 
 
     //
@@ -505,12 +489,23 @@ workflow REFGENOMES {
     )
     ch_versions = ch_versions.mix(COVERAGE_TRACKS.out.versions.first())
 
-    //
-    // MODULE: Run TIDK 
-    //
 
-    TIDK_EXPLORE (CAT_SCAFFOLDS.out.cat_file)
-    ch_versions = ch_versions.mix(TIDK_EXPLORE.out.versions.first())
+//
+// SUBWORKFLOW: Run TELO_FINDER
+//
+    TELO_FINDER (
+        CAT_SCAFFOLDS.out.cat_file,  // reference tuple [meta, fasta]
+        params.teloseq,                // telomere sequence string
+        false,                         // val_split_telomere - set to true if you want 5'/3' split
+        false                          // val_run_bgzip - set to true if you want compressed output
+    )
+    ch_versions = ch_versions.mix(TELO_FINDER.out.versions)
+
+    // Prepare telomere channel for PretextGraph (flatten list to single file)
+    ch_telomere_for_pretext = TELO_FINDER.out.bedgraph_file
+    .map { meta, bedgraphs ->
+        [ meta, bedgraphs[0] ]  // Take first bedgraph file
+    }
     
     //
     // SUBWORFLOW: Run omnic again
@@ -620,6 +615,14 @@ workflow REFGENOMES {
 
     ch_versions = ch_versions.mix(PRETEXTGRAPH_COVERAGE.out.versions.first())
 
+// Inject telomere track
+    PRETEXTGRAPH_TELOMERE(
+        PRETEXTGRAPH_COVERAGE.out.pretext_graph.join(ch_telomere_for_pretext),
+        "telomere"
+    )
+    ch_versions = ch_versions.mix(PRETEXTGRAPH_TELOMERE.out.versions.first())
+
+    } // End of HiFi+HiC assembly mode conditional block
 
  //
     // Collate and save software versions

@@ -65,8 +65,8 @@ workflow DECONTAMINATION {
     //
     // MODULE: Run BBmap filterbyname
     //
-    ch_bbmap_filterbyname_hap1_in = FCSGX_CLEANGENOME_HAP1.out.cleaned.join(TIARA_TIARA_HAP1.out.classifications)
-    ch_bbmap_filterbyname_hap2_in = FCSGX_CLEANGENOME_HAP2.out.cleaned.join(TIARA_TIARA_HAP2.out.classifications)
+    ch_bbmap_filterbyname_hap1_in = FCSGX_CLEANGENOME_HAP1.out.cleaned.join(TIARA_TIARA_HAP1.out.contig_removal)
+    ch_bbmap_filterbyname_hap2_in = FCSGX_CLEANGENOME_HAP2.out.cleaned.join(TIARA_TIARA_HAP2.out.contig_removal)
 
     BBMAP_FILTERBYNAME_HAP1 (
         ch_bbmap_filterbyname_hap1_in,
