@@ -25,6 +25,78 @@ SAMPLE_FQ_HIFI,/path/to/hifi/fastq/files,/path/to/hic/fastq/files,v1,20240303,1,
 
 An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
 
+
+
+### Using Pre-Computed Assemblies
+
+If you have already run hifiasm assembly externally, you can skip the assembly step and use your pre-computed primary assembly:
+
+#### Samplesheet Format
+
+Add the `primary_assembly` column to your samplesheet:
+
+```csv
+sample,hifi_dir,hic_dir,version,date,tolid,taxid,species,primary_assembly
+OG38,/path/to/hifi,/path/to/hic,hic2,v230609,fOphLin2,241325,Ophthalmolepis lineolata,/path/to/primary.fa
+```
+
+#### Requirements
+
+- The `primary_assembly` field is optional - leave empty to run hifiasm normally
+- HiFi reads directory must still be provided (for QC and coverage analysis)
+- Hi-C reads directory must still be provided (for scaffolding)
+- Assembly files can be:
+  - FASTA format: `.fa`, `.fasta`
+  - GFA format: `.gfa` (will be converted automatically)
+  - Compressed: `.gz` (any of the above)
+
+#### What Gets Skipped
+
+- ✅ Hifiasm assembly step only
+
+#### What Still Runs
+
+- ✅ HiFi adapter filtering and QC (FASTQC)
+- ✅ Meryl/GenomeScope genome profiling
+- ✅ GFASTATS assembly statistics
+- ✅ BUSCO quality assessment
+- ✅ Merqury QV assessment
+- ✅ Hi-C read processing (FASTQC, FASTP)
+- ✅ Scaffolding (YAHS or SALSA)
+- ✅ Decontamination (FCS-GX, Tiara)
+- ✅ Coverage tracks
+- ✅ Telomere finding
+- ✅ Pretext contact maps
+- ✅ All final outputs
+
+#### Example Command
+
+```bash
+nextflow run main.nf \
+  --input samplesheet_with_assemblies.csv \
+  --outdir results \
+  --assembly_mode hifi_hic \
+  --scaffolder yahs \
+  --buscodb /path/to/busco_db \
+  --gxdb /path/to/fcsgx_db \
+  -profile docker
+```
+
+#### Mixed Mode
+
+You can mix samples with and without pre-computed assemblies in the same run:
+
+```csv
+sample,hifi_dir,hic_dir,version,date,tolid,taxid,species,hap1_assembly,hap2_assembly
+OG38,/path/hifi1,/path/hic1,v1,20230101,ID1,123,Species1,/path/hap1.fa,/path/hap2.fa
+OG39,/path/hifi2,/path/hic2,v1,20230102,ID2,456,Species2,,
+```
+
+In this example:
+- OG38 will use the pre-computed assemblies
+- OG39 will run hifiasm normally
+
+
 ## Running the pipeline
 
 The typical command for running the pipeline is as follows:

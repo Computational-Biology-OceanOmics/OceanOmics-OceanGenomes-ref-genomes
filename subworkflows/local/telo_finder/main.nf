@@ -1,10 +1,10 @@
 //
 // MODULE IMPORT BLOCK
 //
-include { TELOMERE_REGIONS              } from '../../../modules/sanger-tol/telomere/regions/main'
+include { TELOMERE_REGIONS              } from '../../../modules/local/telomere/regions/main'
 include { GAWK as GAWK_SPLIT_TELOMERE   } from '../../../modules/nf-core/gawk/main'
-include { TELOMERE_WINDOWS              } from '../../../modules/sanger-tol/telomere/windows/main'
-include { TELOMERE_EXTRACT              } from '../../../modules/sanger-tol/telomere/extract/main'
+include { TELOMERE_WINDOWS              } from '../../../modules/local/telomere/windows/main'
+include { TELOMERE_EXTRACT              } from '../../../modules/local/telomere/extract/main'
 include { TABIX_BGZIPTABIX              } from '../../../modules/nf-core/tabix/bgziptabix'
 
 
@@ -12,7 +12,7 @@ workflow TELO_FINDER {
 
     take:
     ch_reference        // Channel [ val(meta), path(fasta) ]
-    ch_telomereseq      // Channel.of( telomere sequence )
+    ch_teloseq      // bool
     val_split_telomere  // bool
     val_run_bgzip       // bool
 
@@ -23,7 +23,7 @@ workflow TELO_FINDER {
     //
     TELOMERE_REGIONS (
         ch_reference,
-        ch_telomereseq
+        ch_teloseq
     )
 
     ch_full_telomere = TELOMERE_REGIONS.out.telomere

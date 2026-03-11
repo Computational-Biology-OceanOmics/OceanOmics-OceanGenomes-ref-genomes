@@ -14,6 +14,7 @@ process OMNIC {
     tuple val(meta), path("*.stats.txt"), emit: omnic_stats
     tuple val(meta), path("*.mapped.PT.bam"), emit: omnic_bam
     tuple val(meta), path("*.mapped.PT.bam.bai"), emit: omnic_bai
+    tuple val(meta), path("*fai"), emit: omnic_fai
     path "versions.yml"           , emit: versions
 
     when:

@@ -52,7 +52,14 @@
                 "default": "TTAGGG",
                 "description": "Telomere sequence motif to search for",
                 "help_text": "Common motifs: TTAGGG (vertebrates), TTTAGGG (plants), TTAGG (insects)"
-        }
+        },
+        "primary_assembly": {
+            "type": "string",
+            "format": "directory-path",
+            "errorMessage": "Primary assembly must be a valid directory path",
+            "meta": ["primary_assembly"],
+            "description": "Optional path to directory containing pre-computed primary assembly FASTA/GFA file (skips hifiasm assembly). Pipeline will auto-detect .fa/.fasta/.gfa files (optionally .gz compressed)."
+}
         },
         "required": ["sample", "hifi_dir", "version", "date", "tolid", "taxid", "species"]
     }

@@ -8,6 +8,7 @@ include { HIFIADAPTERFILT                                } from '../modules/loca
 include { FASTQC as FASTQC_HIFI                          } from '../modules/nf-core/fastqc/main'
 include { FASTQC as FASTQC_HIC                           } from '../modules/nf-core/fastqc/main'
 include { FASTP as FASTP_HIC                             } from '../modules/nf-core/fastp/main'
+include { PREPARE_PRECOMPUTED_ASSEMBLY                   } from '../modules/local/prepare_precomputed_assembly/main'
 include { MERYL_COUNT                                    } from '../modules/nf-core/meryl/count/main'
 include { MERYL_HISTOGRAM                                } from '../modules/nf-core/meryl/histogram/main'
 include { GENOMESCOPE2                                   } from '../modules/nf-core/genomescope2/main'
@@ -85,13 +86,13 @@ workflow REFGENOMES {
 
     ch_hic = ch_samplesheet
         .map {
-            meta ->
-                if (meta.hic_dir[0] != null) {
-                    meta = meta[0]
+            tuple ->
+                def meta = tuple[0]  // ← Extract meta from the tuple FIRST
+                if (meta.hic_dir != null) {
                     meta.id = meta.sample + "_" + meta.date + "." + meta.version
                     return [ meta, meta.hic_dir ]
                 }
-        }
+    }
 
     ch_species = ch_samplesheet
         .map {
@@ -100,7 +101,52 @@ workflow REFGENOMES {
                 meta.id = meta.sample + "_" + meta.date + "." + meta.version
                 return [ meta, meta.species ]
         }
-
+    //
+    // Prepare pre-computed assembly channel if provided
+    //
+    ch_precomputed_assembly = ch_samplesheet
+        .map { meta ->
+            meta = meta[0]
+            meta.id = meta.sample + "_" + meta.date + "." + meta.version
+            def has_assembly = meta.primary_assembly != null && meta.primary_assembly != ''
+            if (has_assembly) {
+                def assembly_path = file(meta.primary_assembly)
+                
+                // Check if path exists
+                if (!assembly_path.exists()) {
+                    error "Assembly path not found: ${meta.primary_assembly}"
+                }
+                
+                // If it's a directory, find the assembly file inside
+                def assembly_file
+                if (assembly_path.isDirectory()) {
+                    // Find assembly files (FASTA or GFA, optionally compressed)
+                    def assembly_files = assembly_path.listFiles().findAll { f ->
+                        f.name =~ /\.(fa|fasta|gfa)(\.gz)?$/
+                    }
+                    
+                    if (assembly_files.isEmpty()) {
+                        error "No assembly files (.fa/.fasta/.gfa) found in directory: ${meta.primary_assembly}"
+                    }
+                    
+                    if (assembly_files.size() > 1) {
+                        log.warn "Multiple assembly files found in ${meta.primary_assembly}, using: ${assembly_files[0].name}"
+                    }
+                    
+                    assembly_file = assembly_files[0]
+                    log.info "Sample ${meta.sample}: Auto-detected assembly ${assembly_file.name} from ${meta.primary_assembly}"
+                } else {
+                    // It's a file, use it directly
+                    assembly_file = assembly_path
+                    log.info "Sample ${meta.sample}: Using assembly file ${assembly_file.name}"
+                }
+                
+                return [ meta, assembly_file ]
+            } else {
+                return null
+            }
+        }
+        .filter { it != null }
 
     //
     // MODULE: Run HiFiAdapterFilt
@@ -192,6 +238,13 @@ workflow REFGENOMES {
             []
         )
         ch_versions = ch_versions.mix(GFASTATS_HIFI_ALT.out.versions.first())
+        
+        // Create ch_contig_assemblies for hifi_only mode
+        ch_contig_assemblies = GFASTATS_HIFI_PRIMARY.out.assembly
+            .join(GFASTATS_HIFI_ALT.out.assembly)
+            .map { meta, primary, alternate ->
+                return [ meta, [ primary, alternate ] ]
+            }
     }
 
     //
@@ -227,27 +280,59 @@ workflow REFGENOMES {
     ch_versions = ch_versions.mix(FASTP_HIC.out.versions.first())
 
     //
-    // MODULE: Run Hifiasm
+    // CONDITIONAL: Use pre-computed assemblies OR run hifiasm
     //
-    ch_hifiasm_in = HIFIADAPTERFILT.out.reads.join(FASTP_HIC.out.fastp_hic)
-        .map {
-            meta, hifi, hic ->
-                return [ meta, hifi, hic[0], hic[1] ]
+    
+    // Branch: either use pre-computed or run hifiasm
+    ch_assembly_source = ch_samplesheet
+        .map { meta ->
+            meta = meta[0]
+            meta.id = meta.sample + "_" + meta.date + "." + meta.version
+            def has_assembly = meta.primary_assembly != null && meta.primary_assembly != ''
+            return [ meta, has_assembly ]
         }
-
+        .branch {
+            precomputed: it[1] == true
+            hifiasm: it[1] == false
+        }
+    
+    // Path 1: Pre-computed assemblies
+    PREPARE_PRECOMPUTED_ASSEMBLY (
+        ch_precomputed_assembly
+    )
+    ch_versions = ch_versions.mix(PREPARE_PRECOMPUTED_ASSEMBLY.out.versions.first())
+    
+    // Path 2: Run hifiasm for samples without pre-computed assemblies
+    ch_hifiasm_samples = ch_assembly_source.hifiasm
+        .map { meta, flag -> meta }
+        .join(HIFIADAPTERFILT.out.reads)
+        .join(FASTP_HIC.out.fastp_hic)
+        .map { meta, hifi, hic ->
+            return [ meta, hifi, hic[0], hic[1] ]
+        }
+    
     HIFIASM (
-        ch_hifiasm_in,
+        ch_hifiasm_samples,
         "0.hifiasm",
         [],
         []
     )
     ch_versions = ch_versions.mix(HIFIASM.out.versions.first())
-
+    
     //
-    // MODULE: Run Gfastats
+    // MODULE: Run Gfastats (combines both paths)
     //
-    ch_gfastats_hap1_in = HIFIASM.out.hap1_contigs.join(GENOMESCOPE2.out.summary)
-    ch_gfastats_hap2_in = HIFIASM.out.hap2_contigs.join(GENOMESCOPE2.out.summary)
+    
+    // Combine haplotype 1 from both sources
+    ch_hap1_assemblies = PREPARE_PRECOMPUTED_ASSEMBLY.out.hap1_fasta
+        .mix(HIFIASM.out.hap1_contigs)
+    
+    // Combine haplotype 2 from both sources  
+    ch_hap2_assemblies = PREPARE_PRECOMPUTED_ASSEMBLY.out.hap2_fasta
+        .mix(HIFIASM.out.hap2_contigs)
+    
+    ch_gfastats_hap1_in = ch_hap1_assemblies.join(GENOMESCOPE2.out.summary)
+    ch_gfastats_hap2_in = ch_hap2_assemblies.join(GENOMESCOPE2.out.summary)
 
     GFASTATS_HAP1 (
         ch_gfastats_hap1_in,
@@ -275,12 +360,13 @@ workflow REFGENOMES {
     )
     ch_versions = ch_versions.mix(GFASTATS_HAP2.out.versions.first())
 
-    ch_contig_assemblies = GFASTATS_HAP1.out.assembly.join(GFASTATS_HAP2.out.assembly)
-        .map {
-            meta, hap1_contigs, hap2_contigs ->
-                return [ meta, [ hap1_contigs, hap2_contigs ] ]
-        }
 
+    // Create ch_contig_assemblies for hifi_hic mode
+    ch_contig_assemblies = GFASTATS_HAP1.out.assembly
+        .join(GFASTATS_HAP2.out.assembly)
+        .map { meta, hap1, hap2 ->
+            return [ meta, [ hap1, hap2 ] ]
+        }
 
     //
     // MODULE: Run Busco
@@ -472,6 +558,24 @@ workflow REFGENOMES {
     )
    ch_versions = ch_versions.mix(CAT_SCAFFOLDS.out.versions.first())
 
+    //
+    // SUBWORKFLOW: Run TELO_FINDER
+    //
+
+    def ch_teloseq = channel.value(params.teloseq)
+
+    TELO_FINDER (
+        CAT_SCAFFOLDS.out.cat_file,
+        ch_teloseq,
+        false,
+        false
+    )
+
+    // Prepare telomere channel for PretextGraph
+    ch_telomere_for_pretext = TELO_FINDER.out.bedgraph_file
+        .map { meta, bedgraphs ->
+            [ meta, bedgraphs[0] ]
+        }
 
     //
     // SUBWORKFLOW: Run coverage tracks
@@ -490,22 +594,6 @@ workflow REFGENOMES {
     ch_versions = ch_versions.mix(COVERAGE_TRACKS.out.versions.first())
 
 
-//
-// SUBWORKFLOW: Run TELO_FINDER
-//
-    TELO_FINDER (
-        CAT_SCAFFOLDS.out.cat_file,  // reference tuple [meta, fasta]
-        params.teloseq,                // telomere sequence string
-        false,                         // val_split_telomere - set to true if you want 5'/3' split
-        false                          // val_run_bgzip - set to true if you want compressed output
-    )
-    ch_versions = ch_versions.mix(TELO_FINDER.out.versions)
-
-    // Prepare telomere channel for PretextGraph (flatten list to single file)
-    ch_telomere_for_pretext = TELO_FINDER.out.bedgraph_file
-    .map { meta, bedgraphs ->
-        [ meta, bedgraphs[0] ]  // Take first bedgraph file
-    }
     
     //
     // SUBWORFLOW: Run omnic again

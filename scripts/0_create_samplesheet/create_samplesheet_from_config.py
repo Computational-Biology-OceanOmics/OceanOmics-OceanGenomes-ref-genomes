@@ -16,6 +16,9 @@ Optional:
   SAMPLESHEET_OUTPUT_DIR=/path/to/assets
   SAMPLESHEET_FILENAME_PREFIX=samplesheet
   SAMPLESHEET_LATEST_NAME=samplesheet.csv   # writes/overwrites a stable copy in OUTPUT_DIR
+
+  Run:
+  singularity run $SING/psycopg2:0.1.sif python create_samplesheet_from_config.py ../refgenomes_pipeline.conf
 """
 
 from __future__ import annotations
