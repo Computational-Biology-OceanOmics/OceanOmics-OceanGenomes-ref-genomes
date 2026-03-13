@@ -1,0 +1,101 @@
+Assembly Processing Flow - Before and After Fix
+================================================
+
+BEFORE FIX (Incorrect):
+----------------------
+
+Precomputed Assembly Input
+    |
+    v
+PREPARE_PRECOMPUTED_ASSEMBLY
+    |
+    +---> hap1 (actual assembly)
+    |
+    +---> hap2 (duplicate of hap1)  <-- PROBLEM: Same assembly duplicated
+    |
+    v
+... (scaffolding, decontamination) ...
+    |
+    v
+CAT_SCAFFOLDS
+    |
+    +---> Concatenates hap1 + hap2
+    |
+    v
+RESULT: Doubled assembly with duplicate scaffolds  <-- WRONG!
+
+
+AFTER FIX (Correct):
+-------------------
+
+Input Type Detection
+    |
+    +---> HIFIASM Assembly          +---> Precomputed Assembly
+    |                                |
+    v                                v
+HIFIASM                         PREPARE_PRECOMPUTED_ASSEMBLY
+    |                                |
+    +---> hap1 (distinct)            +---> hap1 (actual assembly)
+    |                                |     is_single_haplotype = true
+    +---> hap2 (distinct)            |
+    |                                +---> hap2 (duplicate for compatibility)
+    |                                      is_single_haplotype = true
+    v                                |
+... (scaffolding, decontamination) ...
+    |                                |
+    v                                v
+ch_filtered_scaffolds.branch()
+    |
+    +---> dual_haplotype            +---> single_haplotype
+    |     (is_single_haplotype       |     (is_single_haplotype == true)
+    |      is null or false)         |
+    v                                v
+CAT_SCAFFOLDS                   PREPARE_SINGLE_HAPLOTYPE_OUTPUTS
+    |                                |
+    | Concatenate                    | Use only hap1
+    | hap1 + hap2                    | Create symlinks for compatibility
+    |                                |
+    +--------------------------------+
+                    |
+                    v
+         Combined Output Channels
+                    |
+    +---------------+---------------+
+    |               |               |
+    v               v               v
+ch_combined    ch_hap1        ch_hap2
+  |               |               |
+  v               v               v
+... (TELO_FINDER, COVERAGE_TRACKS, OMNIC, etc.) ...
+
+
+Channel Merging Details:
+------------------------
+
+ch_combined_scaffolds = 
+    CAT_SCAFFOLDS.out.cat_file
+        .mix(PREPARE_SINGLE_HAPLOTYPE_OUTPUTS.out.combined_file)
+
+ch_hap1_scaffolds = 
+    CAT_SCAFFOLDS.out.hap1_scaffold
+        .mix(PREPARE_SINGLE_HAPLOTYPE_OUTPUTS.out.hap1_file)
+
+ch_hap2_scaffolds = 
+    CAT_SCAFFOLDS.out.hap2_scaffold
+        .mix(PREPARE_SINGLE_HAPLOTYPE_OUTPUTS.out.hap2_file)
+
+
+Output Structure Comparison:
+----------------------------
+
+CAT_SCAFFOLDS outputs:
+- sample.2.tiara.hap1.hap2_combined_scaffolds.fa  (hap1 + hap2 concatenated)
+- sample.hap1.scaffolds_1.fa                       (hap1 renamed)
+- sample.hap2.scaffolds_2.fa                       (hap2 renamed)
+
+PREPARE_SINGLE_HAPLOTYPE_OUTPUTS outputs:
+- sample.2.tiara.hap1.hap2_combined_scaffolds.fa  (symlink to hap1)
+- sample.hap1.scaffolds_1.fa                       (symlink to hap1)
+- sample.hap2.scaffolds_2.fa                       (symlink to hap1)
+
+Both produce identical structures, enabling seamless downstream integration!

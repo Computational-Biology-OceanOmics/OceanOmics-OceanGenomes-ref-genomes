@@ -58,8 +58,18 @@
             "format": "directory-path",
             "errorMessage": "Primary assembly must be a valid directory path",
             "meta": ["primary_assembly"],
-            "description": "Optional path to directory containing pre-computed primary assembly FASTA/GFA file (skips hifiasm assembly). Pipeline will auto-detect .fa/.fasta/.gfa files (optionally .gz compressed)."
-}
+            "description": "Optional path to directory containing a pre-computed single-haplotype assembly FASTA/GFA. Activates the single-haplotype subworkflow (skips Hifiasm and hap2). Auto-detects .fa/.fasta/.gfa files (optionally .gz compressed)."
+        },
+        "hap1_assembly": {
+            "type": "string",
+            "meta": ["hap1_assembly"],
+            "description": "Optional path to a pre-computed hap1 assembly file or directory (FASTA/GFA, optionally .gz). Provide together with hap2_assembly to run the full dual-haplotype pipeline from an existing assembly, bypassing Hifiasm."
+        },
+        "hap2_assembly": {
+            "type": "string",
+            "meta": ["hap2_assembly"],
+            "description": "Optional path to a pre-computed hap2 assembly file or directory (FASTA/GFA, optionally .gz). Provide together with hap1_assembly to run the full dual-haplotype pipeline from an existing assembly, bypassing Hifiasm."
+        }
         },
         "required": ["sample", "hifi_dir", "version", "date", "tolid", "taxid", "species"]
     }

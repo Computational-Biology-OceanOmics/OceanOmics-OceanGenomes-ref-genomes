@@ -9,6 +9,8 @@ include { FASTQC as FASTQC_HIFI                          } from '../modules/nf-c
 include { FASTQC as FASTQC_HIC                           } from '../modules/nf-core/fastqc/main'
 include { FASTP as FASTP_HIC                             } from '../modules/nf-core/fastp/main'
 include { PREPARE_PRECOMPUTED_ASSEMBLY                   } from '../modules/local/prepare_precomputed_assembly/main'
+include { PREPARE_DUAL_ASSEMBLY                          } from '../modules/local/prepare_dual_assembly/main'
+include { SINGLE_HAPLOTYPE                               } from '../subworkflows/local/single_haplotype/main'
 include { MERYL_COUNT                                    } from '../modules/nf-core/meryl/count/main'
 include { MERYL_HISTOGRAM                                } from '../modules/nf-core/meryl/histogram/main'
 include { GENOMESCOPE2                                   } from '../modules/nf-core/genomescope2/main'
@@ -31,6 +33,7 @@ include { GFASTATS2 as GFASTATS_HAP2_FINAL                } from '../modules/loc
 include { BUSCO_BUSCO as BUSCO_BUSCO_FINAL               } from '../modules/nf-core/busco/busco/main'
 include { BUSCO_GENERATEPLOT as BUSCO_GENERATEPLOT_FINAL } from '../modules/nf-core/busco/generateplot/main'
 include { CAT_SCAFFOLDS                                  } from '../modules/local/cat_scaffolds/main'
+// PREPARE_SINGLE_HAPLOTYPE_OUTPUTS replaced by SINGLE_HAPLOTYPE subworkflow
 include { TAR                                            } from '../modules/local/tar/main'
 include { COVERAGE_TRACKS                                } from '../subworkflows/local/coverage_tracks/main'
 include { TELO_FINDER                                   } from '../subworkflows/local/telo_finder/main'
@@ -103,7 +106,46 @@ workflow REFGENOMES {
         }
     //
     // Prepare pre-computed assembly channel if provided
+    // NOTE: We do NOT add any extra flags to meta here — ch_samplesheet is broadcast
+    // to multiple subscribers that share the same underlying Groovy map object.
+    // Mutating meta here would corrupt the meta seen by ch_hifi and downstream
+    // processes (MERYL, GENOMESCOPE2), breaking channel joins.
+    // Precomputed vs. hifiasm branching is done via meta.primary_assembly at the
+    // point of branching (line ~579).
     //
+    // Helper closure: resolve an assembly path (file or directory) to a single FASTA/GFA file
+    def resolve_assembly_file = { String path_str, String label ->
+        def p = file(path_str)
+        if (!p.exists()) { error "Assembly path not found for ${label}: ${path_str}" }
+        if (p.isDirectory()) {
+            def files = p.listFiles().findAll { f -> f.name =~ /\.(fa|fasta|gfa)(\.gz)?$/ }
+            if (files.isEmpty()) { error "No assembly file (.fa/.fasta/.gfa) found in ${label} directory: ${path_str}" }
+            if (files.size() > 1) { log.warn "Multiple assembly files in ${label} directory ${path_str}, using: ${files[0].name}" }
+            return files[0]
+        }
+        return p
+    }
+
+    // Dual-precomputed assembly channel (hap1 + hap2 paths provided → full dual-hap pipeline, skip Hifiasm)
+    ch_dual_precomputed = ch_samplesheet
+        .map { meta ->
+            meta = meta[0]
+            meta.id = meta.sample + "_" + meta.date + "." + meta.version
+            def has_hap1 = meta.hap1_assembly != null && meta.hap1_assembly != ''
+            def has_hap2 = meta.hap2_assembly != null && meta.hap2_assembly != ''
+            if (has_hap1 && has_hap2) {
+                def hap1_file = resolve_assembly_file(meta.hap1_assembly, "${meta.sample} hap1")
+                def hap2_file = resolve_assembly_file(meta.hap2_assembly, "${meta.sample} hap2")
+                log.info "Sample ${meta.sample}: Using precomputed hap1=${hap1_file.name}, hap2=${hap2_file.name}"
+                return [ meta, hap1_file, hap2_file ]
+            } else if (has_hap1 ^ has_hap2) {
+                error "Sample ${meta.sample}: hap1_assembly and hap2_assembly must both be provided, or both left empty"
+            } else {
+                return null
+            }
+        }
+        .filter { it != null }
+
     ch_precomputed_assembly = ch_samplesheet
         .map { meta ->
             meta = meta[0]
@@ -111,12 +153,12 @@ workflow REFGENOMES {
             def has_assembly = meta.primary_assembly != null && meta.primary_assembly != ''
             if (has_assembly) {
                 def assembly_path = file(meta.primary_assembly)
-                
+
                 // Check if path exists
                 if (!assembly_path.exists()) {
                     error "Assembly path not found: ${meta.primary_assembly}"
                 }
-                
+
                 // If it's a directory, find the assembly file inside
                 def assembly_file
                 if (assembly_path.isDirectory()) {
@@ -124,15 +166,15 @@ workflow REFGENOMES {
                     def assembly_files = assembly_path.listFiles().findAll { f ->
                         f.name =~ /\.(fa|fasta|gfa)(\.gz)?$/
                     }
-                    
+
                     if (assembly_files.isEmpty()) {
                         error "No assembly files (.fa/.fasta/.gfa) found in directory: ${meta.primary_assembly}"
                     }
-                    
+
                     if (assembly_files.size() > 1) {
                         log.warn "Multiple assembly files found in ${meta.primary_assembly}, using: ${assembly_files[0].name}"
                     }
-                    
+
                     assembly_file = assembly_files[0]
                     log.info "Sample ${meta.sample}: Auto-detected assembly ${assembly_file.name} from ${meta.primary_assembly}"
                 } else {
@@ -140,7 +182,7 @@ workflow REFGENOMES {
                     assembly_file = assembly_path
                     log.info "Sample ${meta.sample}: Using assembly file ${assembly_file.name}"
                 }
-                
+
                 return [ meta, assembly_file ]
             } else {
                 return null
@@ -283,24 +325,32 @@ workflow REFGENOMES {
     // CONDITIONAL: Use pre-computed assemblies OR run hifiasm
     //
     
-    // Branch: either use pre-computed or run hifiasm
+    // Branch: exclude any sample that already has a precomputed assembly from Hifiasm
     ch_assembly_source = ch_samplesheet
         .map { meta ->
             meta = meta[0]
             meta.id = meta.sample + "_" + meta.date + "." + meta.version
-            def has_assembly = meta.primary_assembly != null && meta.primary_assembly != ''
-            return [ meta, has_assembly ]
+            def has_single  = meta.primary_assembly != null && meta.primary_assembly != ''
+            def has_dual    = meta.hap1_assembly != null && meta.hap1_assembly != '' &&
+                              meta.hap2_assembly != null && meta.hap2_assembly != ''
+            return [ meta, has_single || has_dual ]
         }
         .branch {
             precomputed: it[1] == true
-            hifiasm: it[1] == false
+            hifiasm:     it[1] == false
         }
-    
-    // Path 1: Pre-computed assemblies
+
+    // Path 1a: Single precomputed assembly → single-haplotype subworkflow
     PREPARE_PRECOMPUTED_ASSEMBLY (
         ch_precomputed_assembly
     )
     ch_versions = ch_versions.mix(PREPARE_PRECOMPUTED_ASSEMBLY.out.versions.first())
+
+    // Path 1b: Dual precomputed assemblies → full dual-haplotype pipeline
+    PREPARE_DUAL_ASSEMBLY (
+        ch_dual_precomputed
+    )
+    ch_versions = ch_versions.mix(PREPARE_DUAL_ASSEMBLY.out.versions.first())
     
     // Path 2: Run hifiasm for samples without pre-computed assemblies
     ch_hifiasm_samples = ch_assembly_source.hifiasm
@@ -319,18 +369,47 @@ workflow REFGENOMES {
     )
     ch_versions = ch_versions.mix(HIFIASM.out.versions.first())
     
+    // Define teloseq channel once — used by both SINGLE_HAPLOTYPE and TELO_FINDER below
+    ch_teloseq = channel.value(params.teloseq)
+
     //
-    // MODULE: Run Gfastats (combines both paths)
+    // SUBWORKFLOW: Single-haplotype pipeline for precomputed assemblies
+    // Runs all QC, scaffolding, decontamination and visualisation for samples
+    // that already have an assembly — bypassing HIFIASM and the dual-hap pipeline.
     //
-    
-    // Combine haplotype 1 from both sources
-    ch_hap1_assemblies = PREPARE_PRECOMPUTED_ASSEMBLY.out.hap1_fasta
-        .mix(HIFIASM.out.hap1_contigs)
-    
-    // Combine haplotype 2 from both sources  
-    ch_hap2_assemblies = PREPARE_PRECOMPUTED_ASSEMBLY.out.hap2_fasta
-        .mix(HIFIASM.out.hap2_contigs)
-    
+    SINGLE_HAPLOTYPE (
+        PREPARE_PRECOMPUTED_ASSEMBLY.out.hap1_fasta,
+        HIFIADAPTERFILT.out.reads.filter { meta, reads ->
+            meta.primary_assembly != null && meta.primary_assembly != '' &&
+            !(meta.hap1_assembly != null && meta.hap1_assembly != '')
+        },
+        FASTP_HIC.out.fastp_hic.filter { meta, reads ->
+            meta.primary_assembly != null && meta.primary_assembly != '' &&
+            !(meta.hap1_assembly != null && meta.hap1_assembly != '')
+        },
+        MERYL_COUNT.out.meryl_db.filter { meta, db ->
+            meta.primary_assembly != null && meta.primary_assembly != '' &&
+            !(meta.hap1_assembly != null && meta.hap1_assembly != '')
+        },
+        GENOMESCOPE2.out.summary.filter { meta, summary ->
+            meta.primary_assembly != null && meta.primary_assembly != '' &&
+            !(meta.hap1_assembly != null && meta.hap1_assembly != '')
+        },
+        params.gxdb,
+        params.tempdir,
+        ch_teloseq,
+        params.buscomode,
+        params.buscodb
+    )
+    ch_versions = ch_versions.mix(SINGLE_HAPLOTYPE.out.versions.first())
+
+    //
+    // Dual-haplotype pipeline: HIFIASM samples + dual-precomputed assembly samples
+    // (Single-precomputed assembly samples are fully handled by SINGLE_HAPLOTYPE above)
+    //
+    ch_hap1_assemblies = HIFIASM.out.hap1_contigs.mix(PREPARE_DUAL_ASSEMBLY.out.hap1_fasta)
+    ch_hap2_assemblies = HIFIASM.out.hap2_contigs.mix(PREPARE_DUAL_ASSEMBLY.out.hap2_fasta)
+
     ch_gfastats_hap1_in = ch_hap1_assemblies.join(GENOMESCOPE2.out.summary)
     ch_gfastats_hap2_in = ch_hap2_assemblies.join(GENOMESCOPE2.out.summary)
 
@@ -544,28 +623,31 @@ workflow REFGENOMES {
     ch_versions = ch_versions.mix(BUSCO_GENERATEPLOT_FINAL.out.versions.first())
 
     //
-    // MODULE: Rename, and concatenate scaffolds
+    // MODULE: Rename and concatenate scaffolds (dual-haplotype HIFIASM samples only)
+    // Precomputed single-haplotype samples are handled by SINGLE_HAPLOTYPE subworkflow.
     //
-    ch_filtered_scaffolds = DECONTAMINATION.out.hap1_clean_scaffolds.join(DECONTAMINATION.out.hap2_clean_scaffolds)
-        .map {
-        meta, hap1_scaffolds, hap2_scaffolds ->
+    ch_filtered_scaffolds = DECONTAMINATION.out.hap1_clean_scaffolds
+        .join(DECONTAMINATION.out.hap2_clean_scaffolds)
+        .map { meta, hap1_scaffolds, hap2_scaffolds ->
             return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
-    }
+        }
 
     CAT_SCAFFOLDS (
-       ch_filtered_scaffolds,
-      ".2.tiara.hap1.hap2"
+        ch_filtered_scaffolds,
+        ".2.tiara.hap1.hap2"
     )
-   ch_versions = ch_versions.mix(CAT_SCAFFOLDS.out.versions.first())
+    ch_versions = ch_versions.mix(CAT_SCAFFOLDS.out.versions.first())
+
+    ch_combined_scaffolds = CAT_SCAFFOLDS.out.cat_file
+    ch_hap1_scaffolds     = CAT_SCAFFOLDS.out.hap1_scaffold
+    ch_hap2_scaffolds     = CAT_SCAFFOLDS.out.hap2_scaffold
 
     //
     // SUBWORKFLOW: Run TELO_FINDER
     //
 
-    def ch_teloseq = channel.value(params.teloseq)
-
     TELO_FINDER (
-        CAT_SCAFFOLDS.out.cat_file,
+        ch_combined_scaffolds,
         ch_teloseq,
         false,
         false
@@ -581,7 +663,7 @@ workflow REFGENOMES {
     // SUBWORKFLOW: Run coverage tracks
     //
 
-    ch_coverage_tracks_in = HIFIADAPTERFILT.out.reads.join(CAT_SCAFFOLDS.out.cat_file)
+    ch_coverage_tracks_in = HIFIADAPTERFILT.out.reads.join(ch_combined_scaffolds)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]
@@ -599,19 +681,19 @@ workflow REFGENOMES {
     // SUBWORFLOW: Run omnic again
     //
 
-    ch_omnic_hap1_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.hap1_scaffold)
+    ch_omnic_hap1_in = FASTP_HIC.out.fastp_hic.join(ch_hap1_scaffolds)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]
         }
 
-    ch_omnic_hap2_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.hap2_scaffold)
+    ch_omnic_hap2_in = FASTP_HIC.out.fastp_hic.join(ch_hap2_scaffolds)
         .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]
         }
 
-    ch_omic_dual_in = FASTP_HIC.out.fastp_hic.join(CAT_SCAFFOLDS.out.cat_file)
+    ch_omic_dual_in = FASTP_HIC.out.fastp_hic.join(ch_combined_scaffolds)
             .map {
             meta, reads, assemblies ->
                 return [ meta, reads, assemblies ]

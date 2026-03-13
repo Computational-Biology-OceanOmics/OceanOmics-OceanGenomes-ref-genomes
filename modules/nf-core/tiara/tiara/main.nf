@@ -53,11 +53,19 @@ process TIARA_TIARA {
     c=\$(count prokarya); b=\$(bpsum prokarya)
     printf "Prokarya\\t%s\\t%s\\n" "\$c" "\$b" >> "$summary"
 
+    c=\$(count bacteria); b=\$(bpsum bacteria)
+    printf "Bacteria\\t%s\\t%s\\n" "\$c" "\$b" >> "$summary"
+
+    c=\$(count archaea); b=\$(bpsum archaea)
+    printf "Archaea\\t%s\\t%s\\n" "\$c" "\$b" >> "$summary"
+
     # contig lists (don’t fail if empty)
     : > "$removal"
-    grep -w mitochondrion "$tiara_report" | awk '{print \$1}' >> "$removal" || true
-    grep -w plastid      "$tiara_report" | awk '{print \$1}' >> "$removal" || true
-    grep -w prokarya     "$tiara_report" | awk '{print \$1}' >> "$removal" || true
+    grep -w mitochondrion "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
+    grep -w plastid      "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
+    grep -w prokarya     "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
+    grep -w bacteria     "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
+    grep -w archaea      "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

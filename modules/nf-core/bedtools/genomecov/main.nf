@@ -35,7 +35,7 @@ process BEDTOOLS_GENOMECOV {
             $args \\
             > ${prefix}.dual.hap.bedgraph
 
-     grep -w 0\\\$ "${prefix}.dual.hap.bedgraph" | sed 's/0\\\$/200/g' > "${prefix}.dual.hap.gaps.bedgraph"
+     grep -w 0\$ "${prefix}.dual.hap.bedgraph" | sed 's/0\$/200/g' > "${prefix}.dual.hap.gaps.bedgraph"
 
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
