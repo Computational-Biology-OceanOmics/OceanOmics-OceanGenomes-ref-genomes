@@ -5,7 +5,7 @@ bash-compatible pipeline config file (KEY=VALUE). Postgres credentials are read 
 INI file whose path is provided in the pipeline config as POSTGRES_CFG.
 
 Intended for the ref-genomes pipeline (raw HiFi/Hi-C staging), producing columns:
-  sample,hifi_dir,hic_dir,version,date,tolid,taxid,species
+  sample,hifi_dir,hic_dir,version,date,tolid,taxid,species,primary_assembly,hap1_assembly,hap2_assembly
 
 Required config keys:
   POSTGRES_CFG=~/postgresql_details/oceanomics.cfg
@@ -16,6 +16,9 @@ Optional:
   SAMPLESHEET_OUTPUT_DIR=/path/to/assets
   SAMPLESHEET_FILENAME_PREFIX=samplesheet
   SAMPLESHEET_LATEST_NAME=samplesheet.csv   # writes/overwrites a stable copy in OUTPUT_DIR
+  PRIMARY_ASSEMBLY_SUBDIR=primary_assembly   # subdirectory name under <OG_ID>/ (default: primary_assembly)
+  HAP1_ASSEMBLY_SUBDIR=hap1                  # subdirectory name under <OG_ID>/ (default: hap1)
+  HAP2_ASSEMBLY_SUBDIR=hap2                  # subdirectory name under <OG_ID>/ (default: hap2)
 
   Run:
   singularity run $SING/psycopg2:0.1.sif python create_samplesheet_from_config.py ../refgenomes_pipeline.conf
@@ -116,27 +119,36 @@ def read_postgres_ini(postgres_cfg_path: str) -> Dict[str, str]:
     }
 
 
-def build_function_sql(staging_base_dir: str) -> str:
+def build_function_sql(staging_base_dir: str, primary_subdir: str, hap1_subdir: str, hap2_subdir: str) -> str:
     """
     Inject staging_base_dir into the SQL function.
     This base dir is used to build:
       <base>/<OG_ID>/hifi
       <base>/<OG_ID>/hic
+      <base>/<OG_ID>/<primary_subdir>   (primary_assembly — empty by default)
+      <base>/<OG_ID>/<hap1_subdir>      (hap1_assembly — empty by default)
+      <base>/<OG_ID>/<hap2_subdir>      (hap2_assembly — empty by default)
     """
     base = staging_base_dir.rstrip("/")
     base_sql = base.replace("'", "''")  # SQL literal escape
+    primary_sql = primary_subdir.replace("'", "''")
+    hap1_sql = hap1_subdir.replace("'", "''")
+    hap2_sql = hap2_subdir.replace("'", "''")
 
     return f"""
 CREATE OR REPLACE FUNCTION build_nfcore_samplesheet_rows(in_og_ids text[])
 RETURNS TABLE (
-  sample   text,
-  hifi_dir text,
-  hic_dir  text,
-  version  text,
-  date     text,
-  tolid    text,
-  taxid    bigint,
-  species  text
+  sample            text,
+  hifi_dir          text,
+  hic_dir           text,
+  version           text,
+  date              text,
+  tolid             text,
+  taxid             bigint,
+  species           text,
+  primary_assembly  text,
+  hap1_assembly     text,
+  hap2_assembly     text
 )
 LANGUAGE sql
 AS $$
@@ -169,7 +181,10 @@ SELECT DISTINCT ON (p.og_id)
   CASE WHEN ls.seq_date IS NOT NULL THEN 'v'||to_char(ls.seq_date,'YYMMDD') END AS date,
   COALESCE(smp.tol_id, p.og_id) AS tolid,
   sp.ncbi_taxon_id AS taxid,
-  sp.species
+  sp.species,
+  '' AS primary_assembly,
+  '' AS hap1_assembly,
+  '' AS hap2_assembly
 FROM p
 LEFT JOIN ref_genomes rg ON rg.og_id = p.og_id
 LEFT JOIN latest_seq ls  ON ls.og_id = p.og_id
@@ -201,10 +216,14 @@ def main() -> None:
     prefix = cfg.get("SAMPLESHEET_FILENAME_PREFIX", "samplesheet").strip() or "samplesheet"
     latest_name = cfg.get("SAMPLESHEET_LATEST_NAME", "samplesheet.csv").strip() or ""
 
+    primary_subdir = cfg.get("PRIMARY_ASSEMBLY_SUBDIR", "primary_assembly").strip() or "primary_assembly"
+    hap1_subdir    = cfg.get("HAP1_ASSEMBLY_SUBDIR",    "hap1").strip()             or "hap1"
+    hap2_subdir    = cfg.get("HAP2_ASSEMBLY_SUBDIR",    "hap2").strip()             or "hap2"
+
     postgres_cfg = expand_user_placeholders(require(cfg, "POSTGRES_CFG"), user)
     pg = read_postgres_ini(postgres_cfg)
 
-    func_sql = build_function_sql(staging_base_dir)
+    func_sql = build_function_sql(staging_base_dir, primary_subdir, hap1_subdir, hap2_subdir)
 
     conn = None
     cur = None
@@ -233,6 +252,19 @@ def main() -> None:
         # taxid nullable integer
         if "taxid" in df.columns:
             df["taxid"] = pd.to_numeric(df["taxid"], errors="coerce").astype("Int64")
+
+        # Populate assembly columns with paths only where the directory exists on disk
+        base = staging_base_dir.rstrip("/")
+        for _, row in df.iterrows():
+            og = row["sample"]
+            for col, subdir in [
+                ("primary_assembly", primary_subdir),
+                ("hap1_assembly",    hap1_subdir),
+                ("hap2_assembly",    hap2_subdir),
+            ]:
+                p = Path(f"{base}/{og}/{subdir}")
+                if p.is_dir():
+                    df.loc[df["sample"] == og, col] = str(p)
 
         missing_rows = df[df.isnull().any(axis=1)]
         if not missing_rows.empty:

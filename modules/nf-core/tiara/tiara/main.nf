@@ -40,7 +40,7 @@ process TIARA_TIARA {
         # header
     printf "Category\\tnum_contigs\\tbp\\n" > "$summary"
 
-    # helper that’s safe under -euo pipefail
+    # helper that's safe under -euo pipefail
     count() { grep -w "\$1" "$tiara_report" | wc -l || true; }
     bpsum() { grep -w "\$1" "$tiara_report" | awk -F'len=' '{s += \$2} END {print s+0}' || true; }
 
@@ -59,13 +59,13 @@ process TIARA_TIARA {
     c=\$(count archaea); b=\$(bpsum archaea)
     printf "Archaea\\t%s\\t%s\\n" "\$c" "\$b" >> "$summary"
 
-    # contig lists (don’t fail if empty)
+    # contig lists (don't fail if empty)
     : > "$removal"
-    grep -w mitochondrion "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
-    grep -w plastid      "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
-    grep -w prokarya     "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
-    grep -w bacteria     "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
-    grep -w archaea      "$tiara_report" | awk ‘{print \$1}’ >> "$removal" || true
+    grep -w mitochondrion "$tiara_report" | awk '{print \$1}' >> "$removal" || true
+    grep -w plastid      "$tiara_report" | awk '{print \$1}' >> "$removal" || true
+    grep -w prokarya     "$tiara_report" | awk '{print \$1}' >> "$removal" || true
+    grep -w bacteria     "$tiara_report" | awk '{print \$1}' >> "$removal" || true
+    grep -w archaea      "$tiara_report" | awk '{print \$1}' >> "$removal" || true
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

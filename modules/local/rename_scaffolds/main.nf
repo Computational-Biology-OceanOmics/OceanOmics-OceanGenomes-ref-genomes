@@ -22,7 +22,7 @@ process RENAME_SCAFFOLDS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def output = "${prefix}.renamed.fa"
     """
-    # Function to rename scaffolds using sequential numbering (SCAFFOLD_1, SCAFFOLD_2, ...)
+    # Function to rename scaffolds using sequential numbering (HAP1_SCAFFOLD_1, HAP1_SCAFFOLD_2, ...)
     rename_scaffolds_sequential() {
         local input_file=\$1
         local output_file=\$2
@@ -32,7 +32,7 @@ process RENAME_SCAFFOLDS {
         awk '
         BEGIN { counter = 1 }
         /^>/ {
-            print ">SCAFFOLD_" counter
+            print ">HAP1_SCAFFOLD_" counter
             counter++
             next
         }
@@ -57,7 +57,7 @@ process RENAME_SCAFFOLDS {
     }
 
     echo "Starting RENAME_SCAFFOLDS process for ${prefix}"
-    echo "Using sequential SCAFFOLD_N naming format for agp-tpf-utils compatibility"
+    echo "Using sequential HAP1_SCAFFOLD_N naming format for agp-tpf-utils compatibility"
 
     original=\$(grep -c '^>' ${fasta} || echo 0)
     echo "Original scaffold count: \$original"
@@ -71,7 +71,7 @@ process RENAME_SCAFFOLDS {
             if [ -s "${output}" ]; then
                 renamed=\$(grep -c '^>' ${output} || echo 0)
                 first_header=\$(head -1 ${output})
-                if [[ "\$first_header" == ">SCAFFOLD_"* ]]; then
+                if [[ "\$first_header" == ">HAP1_SCAFFOLD_"* ]]; then
                     if validate_counts \$original \$renamed; then
                         echo "Renaming successful on attempt \$attempt"
                         success=true
@@ -107,7 +107,7 @@ process RENAME_SCAFFOLDS {
     cat <<-END_COUNTS > scaffold_counts.txt
 	Original scaffold count : \$original
 	Renamed scaffold count  : \$final
-	Naming format           : SCAFFOLD_N (agp-tpf-utils compatible)
+	Naming format           : HAP1_SCAFFOLD_N (agp-tpf-utils compatible)
 	Status                  : SUCCESS
 	END_COUNTS
 

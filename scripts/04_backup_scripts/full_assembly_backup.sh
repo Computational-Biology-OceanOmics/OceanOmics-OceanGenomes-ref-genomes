@@ -180,7 +180,7 @@ if [[ "$mode" == "hifi_hic" ]]; then
         "${OG}/${OG}_${asm_ver}/bedgraph"
     rclone_copy "${OG}/06-coverage-tracks/${OG}_${asm_ver}.dual.hap.bedgraph" \
         "${OG}/${OG}_${asm_ver}/bedgraph"
-    rclone_copy "${OG}/07-telomers/${OG}_${asm_ver}_sorted_telomeric_locations.bedgraph" \
+    rclone_copy "${OG}/07-telomers" \
         "${OG}/${OG}_${asm_ver}/bedgraph"
 
     rclone_copy "${OG}/08-pretext/${OG}_${asm_ver}.2.tiara.dual.pretext_snapshotFullMap.png" \
@@ -282,7 +282,7 @@ if [[ "$mode" == "dual_hap" ]]; then
         "${OG}/${OG}_${asm_ver}/bedgraph"
     rclone_copy "${OG}/06-coverage-tracks/${OG}_${asm_ver}.dual.hap.bedgraph" \
         "${OG}/${OG}_${asm_ver}/bedgraph"
-    rclone_copy "${OG}/07-telomers/${OG}_${asm_ver}_sorted_telomeric_locations.bedgraph" \
+    rclone_copy "${OG}/07-telomers" \
         "${OG}/${OG}_${asm_ver}/bedgraph"
 
     rclone_copy "${OG}/08-pretext/${OG}_${asm_ver}.2.tiara.dual.pretext_snapshotFullMap.png" \
@@ -363,7 +363,7 @@ if [[ "$mode" == "single_hap" ]]; then
         "${OG}/${OG}_${asm_ver}/bedgraph"
     rclone_copy "${OG}/06-coverage-tracks/${OG}_${asm_ver}.hap1.bedgraph" \
         "${OG}/${OG}_${asm_ver}/bedgraph"
-    rclone_copy "${OG}/07-telomers/${OG}_${asm_ver}_sorted_telomeric_locations.bedgraph" \
+    rclone_copy "${OG}/07-telomers" \
         "${OG}/${OG}_${asm_ver}/bedgraph"
 
     rclone_copy "${OG}/08-pretext-sh/" \
