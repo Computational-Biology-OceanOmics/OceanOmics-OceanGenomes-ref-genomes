@@ -363,7 +363,7 @@ workflow REFGENOMES {
     
     HIFIASM (
         ch_hifiasm_samples,
-        "0.hifiasm",
+        "1.hifiasm",
         [],
         []
     )
@@ -418,7 +418,7 @@ workflow REFGENOMES {
         "fasta",
         "",
         "hap1",
-        "0.hifiasm",
+        "1.hifiasm",
         [],
         [],
         [],
@@ -431,7 +431,7 @@ workflow REFGENOMES {
         "fasta",
         "",
         "hap2",
-        "0.hifiasm",
+        "1.hifiasm",
         [],
         [],
         [],
@@ -454,7 +454,7 @@ workflow REFGENOMES {
         ch_contig_assemblies,
         params.buscomode,
         params.buscodb,
-        "0.hifiasm",
+        "1.hifiasm",
         []
     )
     ch_versions = ch_versions.mix(BUSCO_BUSCO.out.versions.first())
@@ -464,7 +464,7 @@ workflow REFGENOMES {
     //
     BUSCO_GENERATEPLOT (
         BUSCO_BUSCO.out.short_summaries_txt,
-        "0.hifiasm"
+        "1.hifiasm"
     )
    ch_versions = ch_versions.mix(BUSCO_GENERATEPLOT.out.versions.first())
 
@@ -477,7 +477,7 @@ workflow REFGENOMES {
     MERQURY (
         ch_merqury_in,
         "contigs",
-        "0.hifiasm"
+        "1.hifiasm"
     )
     ch_versions = ch_versions.mix(MERQURY.out.versions.first())
 
@@ -526,7 +526,7 @@ workflow REFGENOMES {
     ch_hap2_contigs = HIFIASM.out.hap2_contigs
     
     // Set up scaffolder suffix for file naming
-    scaffolder_suffix = params.scaffolder == 'yahs' ? '.1.yahs' : '.1.salsa'
+    scaffolder_suffix = params.scaffolder == 'yahs' ? '.2.yahs' : '.2.salsa'
     
     //
     // SUBWORKFLOW: Run scaffolding (YAHS or SALSA based on parameter)

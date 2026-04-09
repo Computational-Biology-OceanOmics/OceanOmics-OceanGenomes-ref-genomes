@@ -87,12 +87,12 @@ tail -n +2 "${CSV}" | while IFS=',' read -r sample hifi_dir hic_dir version date
 
   # 2) assembly files
   for f in \
-    "assembly/${OG}_${asm_ver}.0.hifiasm.hap1.fasta" \
-    "assembly/${OG}_${asm_ver}.0.hifiasm.hap2.fasta" \
+    "assembly/${OG}_${asm_ver}.1.hifiasm.hap1.fasta" \
+    "assembly/${OG}_${asm_ver}.1.hifiasm.hap2.fasta" \
     "assembly/${OG}_${asm_ver}.hic.hap1.p_ctg.gfa" \
     "assembly/${OG}_${asm_ver}.hic.hap2.p_ctg.gfa" \
-    "assembly/${OG}_${asm_ver}.1.yahs.hap1_scaffolds_final.fa" \
-    "assembly/${OG}_${asm_ver}.1.yahs.hap2_scaffolds_final.fa" \
+    "assembly/${OG}_${asm_ver}.2.yahs.hap1_scaffolds_final.fa" \
+    "assembly/${OG}_${asm_ver}.2.yahs.hap2_scaffolds_final.fa" \
   ; do
     path="${base}/${f}"
     if exists_file "${path}"; then
@@ -104,8 +104,8 @@ tail -n +2 "${CSV}" | while IFS=',' read -r sample hifi_dir hic_dir version date
 
   # 3) gfastats summaries (hap1/hap2)
   for f in \
-    "gfastats/${OG}_${asm_ver}.0.hifiasm.hap1.assembly_summary.txt" \
-    "gfastats/${OG}_${asm_ver}.0.hifiasm.hap2.assembly_summary.txt" \
+    "gfastats/${OG}_${asm_ver}.1.hifiasm.hap1.assembly_summary.txt" \
+    "gfastats/${OG}_${asm_ver}.1.hifiasm.hap2.assembly_summary.txt" \
   ; do
     path="${base}/${f}"
     if exists_file "${path}"; then

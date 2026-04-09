@@ -49,7 +49,7 @@ workflow SINGLE_HAPLOTYPE {
         "fasta",
         "",
         "hap1",
-        "0.hifiasm",
+        "1.hifiasm",
         [],
         [],
         [],
@@ -67,14 +67,14 @@ workflow SINGLE_HAPLOTYPE {
         ch_busco_sh_contig_in,
         buscomode,
         buscodb,
-        "0.hifiasm",
+        "1.hifiasm",
         []
     )
     ch_versions = ch_versions.mix(BUSCO_BUSCO_SH.out.versions.first())
 
     BUSCO_GENERATEPLOT_SH (
         BUSCO_BUSCO_SH.out.short_summaries_txt,
-        "0.hifiasm"
+        "1.hifiasm"
     )
     ch_versions = ch_versions.mix(BUSCO_GENERATEPLOT_SH.out.versions.first())
 
@@ -86,7 +86,7 @@ workflow SINGLE_HAPLOTYPE {
     MERQURY_SH (
         ch_merqury_sh_in,
         "contigs",
-        "0.hifiasm"
+        "1.hifiasm"
     )
     ch_versions = ch_versions.mix(MERQURY_SH.out.versions.first())
 
@@ -112,7 +112,7 @@ workflow SINGLE_HAPLOTYPE {
 
     YAHS_SH (
         ch_yahs_sh_in,
-        ".1.yahs.hap1"
+        ".2.yahs.hap1"
     )
     ch_versions = ch_versions.mix(YAHS_SH.out.versions.first())
 
@@ -122,7 +122,7 @@ workflow SINGLE_HAPLOTYPE {
     FCS_FCSGX_SH (
         YAHS_SH.out.scaffolds_fasta,
         gxdb,
-        ".1.yahs.hap1.NCBI"
+        ".2.yahs.hap1.NCBI"
     )
     ch_versions = ch_versions.mix(FCS_FCSGX_SH.out.versions.first())
 
@@ -133,7 +133,7 @@ workflow SINGLE_HAPLOTYPE {
 
     TIARA_TIARA_SH (
         FCSGX_CLEANGENOME_SH.out.cleaned,
-        ".1.yahs.hap1.tiara"
+        ".2.yahs.hap1.tiara"
     )
     ch_versions = ch_versions.mix(TIARA_TIARA_SH.out.versions.first())
 
