@@ -24,127 +24,144 @@ process CAT_SCAFFOLDS {
     script:
     def prefix = task.ext.prefix ?: "${meta.id}" 
     """
-    # Function to rename scaffolds using sequential numbering (HAP1_SCAFFOLD_1, HAP2_SCAFFOLD_1, ...)
-    # This format is compatible with agp-tpf-utils for single haplotype assemblies
-    rename_scaffolds_sequential() {
+    # Rename scaffold headers while preserving the original scaffold suffix.
+    # Example: >scaffold_42 -> >HAP1_SCAFFOLD_42
+    rename_scaffolds() {
         local input_file=\$1
         local output_file=\$2
-        local start_num=\$3
-        local hap_prefix=\$4
+        local replacement_prefix=\$3
 
-        echo "Renaming scaffolds in \$input_file starting from \${hap_prefix}SCAFFOLD_\${start_num}..."
-
-        # awk counts headers itself and writes the count to <output>.count
-        # This avoids a separate grep on the input file, preventing Lustre
-        # read-consistency race conditions on HPC systems.
-        awk -v start="\$start_num" -v hap_prefix="\$hap_prefix" -v count_file="\${output_file}.count" '
-        BEGIN { counter = start }
+        echo "Renaming scaffolds in \$input_file using prefix \$replacement_prefix..."
+        awk -v replacement_prefix="\$replacement_prefix" '
         /^>/ {
-            print ">" hap_prefix "SCAFFOLD_" counter
-            counter++
+            sub(/^>scaffold/, ">" replacement_prefix)
+            print
             next
         }
         { print }
-        END { print (counter - start) > count_file }
         ' "\$input_file" > "\$output_file"
+    }
 
-        return \$?
+    validate_counts() {
+        local original_count=\$1
+        local renamed_count=\$2
+        local file_description=\$3
+
+        if [ "\$original_count" -eq "\$renamed_count" ]; then
+            echo "SUCCESS: \$file_description - Original: \$original_count, Renamed: \$renamed_count"
+            return 0
+        else
+            echo "ERROR: \$file_description - Count mismatch! Original: \$original_count, Renamed: \$renamed_count"
+            return 1
+        fi
     }
 
     echo "Starting CAT_SCAFFOLDS process for ${prefix}"
-    echo "Using sequential HAP1_SCAFFOLD_N / HAP2_SCAFFOLD_N naming format for agp-tpf-utils compatibility"
+    echo "Using prefix-preserving scaffold renaming: scaffold_N -> HAP1_SCAFFOLD_N / HAP2_SCAFFOLD_N"
 
-    # Process Hap1 scaffolds with retry logic (start numbering from 1)
-    # After awk runs we re-count the INPUT file to cross-check awk's count.
-    # If they differ it means awk saw a partially-visible Lustre file; retry
-    # with a longer sleep to let Lustre propagate the full file to this node.
+    echo "Counting original scaffolds..."
+    hap1_original=\$(grep -c '^>' "${prefix}.2.tiara.hap1_scaffolds.fa")
+    hap2_original=\$(grep -c '^>' "${prefix}.2.tiara.hap2_scaffolds.fa")
+
+    echo "Original counts - Hap1: \$hap1_original, Hap2: \$hap2_original"
+
+    # Process Hap1 scaffolds with retry logic
     echo "Processing Hap1 scaffolds..."
     hap1_success=false
-    for attempt in 1 2 3 4 5; do
-        echo "Hap1 attempt \$attempt..."
-        rm -f "${prefix}.hap1.scaffolds_1.fa" "${prefix}.hap1.scaffolds_1.fa.count"
+    for attempt in 1 2 3; do
+        echo "Hap1 attempt \$attempt"
+        rm -f "${prefix}.hap1.scaffolds_1.fa"
 
-        if rename_scaffolds_sequential "${prefix}.2.tiara.hap1_scaffolds.fa" "${prefix}.hap1.scaffolds_1.fa" 1 "HAP1_"; then
-            if [ -s "${prefix}.hap1.scaffolds_1.fa" ] && [ -s "${prefix}.hap1.scaffolds_1.fa.count" ]; then
-                hap1_renamed=\$(cat "${prefix}.hap1.scaffolds_1.fa.count")
-                # Re-count input AFTER awk has read it (forces Lustre cache refresh)
-                hap1_input=\$(grep -c '^>' "${prefix}.2.tiara.hap1_scaffolds.fa" || echo 0)
-                first_header=\$(head -1 ${prefix}.hap1.scaffolds_1.fa)
-                if [[ "\$first_header" == ">HAP1_SCAFFOLD_"* ]] && [ "\$hap1_renamed" -gt 0 ] && [ "\$hap1_renamed" -eq "\$hap1_input" ]; then
-                    echo "SUCCESS: Hap1 - Renamed: \$hap1_renamed scaffolds (input: \$hap1_input)"
-                    hap1_success=true
-                    break
+        if rename_scaffolds "${prefix}.2.tiara.hap1_scaffolds.fa" "${prefix}.hap1.scaffolds_1.fa" "HAP1_SCAFFOLD"; then
+            if [ -s "${prefix}.hap1.scaffolds_1.fa" ]; then
+                hap1_renamed=\$(grep -c '^>' "${prefix}.hap1.scaffolds_1.fa")
+                first_header=\$(head -1 "${prefix}.hap1.scaffolds_1.fa")
+                if [[ "\$first_header" == ">HAP1_SCAFFOLD_"* ]]; then
+                    if validate_counts "\$hap1_original" "\$hap1_renamed" "Hap1"; then
+                        echo "Hap1 renaming successful"
+                        hap1_success=true
+                        break
+                    else
+                        echo "Hap1 count validation failed, retrying..."
+                        rm -f "${prefix}.hap1.scaffolds_1.fa"
+                    fi
                 else
-                    echo "Hap1 validation failed on attempt \$attempt (awk: \$hap1_renamed, input: \$hap1_input, header: \$first_header) -- Lustre lag suspected, retrying..."
+                    echo "Hap1 header format incorrect (\$first_header), retrying..."
+                    rm -f "${prefix}.hap1.scaffolds_1.fa"
                 fi
             else
-                echo "Hap1 output file or count file is empty on attempt \$attempt, retrying..."
+                echo "Hap1 output file is empty, retrying..."
             fi
         else
-            echo "Hap1 renaming command failed on attempt \$attempt, retrying..."
+            echo "Hap1 renaming command failed, retrying..."
         fi
 
-        sleep 30
+        sleep 2
     done
 
     if [ "\$hap1_success" = false ]; then
-        echo "FATAL ERROR: Failed to rename Hap1 scaffolds after 5 attempts"
-        echo "Input file size: \$(stat -c%s ${prefix}.2.tiara.hap1_scaffolds.fa 2>/dev/null || echo unknown)"
+        echo "FATAL ERROR: Failed to rename Hap1 scaffolds after 3 attempts"
         head -5 "${prefix}.2.tiara.hap1_scaffolds.fa"
         exit 1
     fi
 
-    echo "Hap1 renaming successful!"
-
-    # Process Hap2 scaffolds with retry logic (start numbering from 1, independent of Hap1)
+    # Process Hap2 scaffolds with retry logic
     echo "Processing Hap2 scaffolds..."
     hap2_success=false
-    for attempt in 1 2 3 4 5; do
-        echo "Hap2 attempt \$attempt..."
-        rm -f "${prefix}.hap2.scaffolds_2.fa" "${prefix}.hap2.scaffolds_2.fa.count"
+    for attempt in 1 2 3; do
+        echo "Hap2 attempt \$attempt"
+        rm -f "${prefix}.hap2.scaffolds_2.fa"
 
-        if rename_scaffolds_sequential "${prefix}.2.tiara.hap2_scaffolds.fa" "${prefix}.hap2.scaffolds_2.fa" 1 "HAP2_"; then
-            if [ -s "${prefix}.hap2.scaffolds_2.fa" ] && [ -s "${prefix}.hap2.scaffolds_2.fa.count" ]; then
-                hap2_renamed=\$(cat "${prefix}.hap2.scaffolds_2.fa.count")
-                # Re-count input AFTER awk has read it (forces Lustre cache refresh)
-                hap2_input=\$(grep -c '^>' "${prefix}.2.tiara.hap2_scaffolds.fa" || echo 0)
-                first_header=\$(head -1 ${prefix}.hap2.scaffolds_2.fa)
-                if [[ "\$first_header" == ">HAP2_SCAFFOLD_"* ]] && [ "\$hap2_renamed" -gt 0 ] && [ "\$hap2_renamed" -eq "\$hap2_input" ]; then
-                    echo "SUCCESS: Hap2 - Renamed: \$hap2_renamed scaffolds (input: \$hap2_input)"
-                    hap2_success=true
-                    break
+        if rename_scaffolds "${prefix}.2.tiara.hap2_scaffolds.fa" "${prefix}.hap2.scaffolds_2.fa" "HAP2_SCAFFOLD"; then
+            if [ -s "${prefix}.hap2.scaffolds_2.fa" ]; then
+                hap2_renamed=\$(grep -c '^>' "${prefix}.hap2.scaffolds_2.fa")
+                first_header=\$(head -1 "${prefix}.hap2.scaffolds_2.fa")
+                if [[ "\$first_header" == ">HAP2_SCAFFOLD_"* ]]; then
+                    if validate_counts "\$hap2_original" "\$hap2_renamed" "Hap2"; then
+                        echo "Hap2 renaming successful"
+                        hap2_success=true
+                        break
+                    else
+                        echo "Hap2 count validation failed, retrying..."
+                        rm -f "${prefix}.hap2.scaffolds_2.fa"
+                    fi
                 else
-                    echo "Hap2 validation failed on attempt \$attempt (awk: \$hap2_renamed, input: \$hap2_input, header: \$first_header) -- Lustre lag suspected, retrying..."
+                    echo "Hap2 header format incorrect (\$first_header), retrying..."
+                    rm -f "${prefix}.hap2.scaffolds_2.fa"
                 fi
             else
-                echo "Hap2 output file or count file is empty on attempt \$attempt, retrying..."
+                echo "Hap2 output file is empty, retrying..."
             fi
         else
-            echo "Hap2 renaming command failed on attempt \$attempt, retrying..."
+            echo "Hap2 renaming command failed, retrying..."
         fi
 
-        sleep 30
+        sleep 2
     done
 
     if [ "\$hap2_success" = false ]; then
-        echo "FATAL ERROR: Failed to rename Hap2 scaffolds after 5 attempts"
-        echo "Input file size: \$(stat -c%s ${prefix}.2.tiara.hap2_scaffolds.fa 2>/dev/null || echo unknown)"
+        echo "FATAL ERROR: Failed to rename Hap2 scaffolds after 3 attempts"
         head -5 "${prefix}.2.tiara.hap2_scaffolds.fa"
         exit 1
     fi
 
-    hap2_renamed=\$(cat "${prefix}.hap2.scaffolds_2.fa.count")
-    echo "Hap2 renaming successful!"
-
-    # Final validation: re-count output files (no input file reads needed)
     echo "Performing final validation..."
-    hap1_final=\$(grep -c '^>' ${prefix}.hap1.scaffolds_1.fa || echo 0)
-    hap2_final=\$(grep -c '^>' ${prefix}.hap2.scaffolds_2.fa || echo 0)
+    hap1_final=\$(grep -c '^>' "${prefix}.hap1.scaffolds_1.fa")
+    hap2_final=\$(grep -c '^>' "${prefix}.hap2.scaffolds_2.fa")
 
-    if [ "\$hap1_renamed" -ne "\$hap1_final" ] || [ "\$hap2_renamed" -ne "\$hap2_final" ]; then
+    hap1_first=\$(head -1 "${prefix}.hap1.scaffolds_1.fa")
+    hap2_first=\$(head -1 "${prefix}.hap2.scaffolds_2.fa")
+    if [[ "\$hap1_first" != ">HAP1_SCAFFOLD_"* ]] || [[ "\$hap2_first" != ">HAP2_SCAFFOLD_"* ]]; then
+        echo "FATAL ERROR: Header format validation failed!"
+        echo "Hap1 first header: \$hap1_first"
+        echo "Hap2 first header: \$hap2_first"
+        exit 1
+    fi
+
+    if [ "\$hap1_original" -ne "\$hap1_final" ] || [ "\$hap2_original" -ne "\$hap2_final" ]; then
         echo "FATAL ERROR: Final count validation failed!"
-        echo "Hap1 - awk count: \$hap1_renamed, grep count: \$hap1_final"
-        echo "Hap2 - awk count: \$hap2_renamed, grep count: \$hap2_final"
+        echo "Hap1 - Original: \$hap1_original, Final: \$hap1_final"
+        echo "Hap2 - Original: \$hap2_original, Final: \$hap2_final"
         exit 1
     fi
 
@@ -154,7 +171,7 @@ process CAT_SCAFFOLDS {
     cat ${prefix}.hap1.scaffolds_1.fa ${prefix}.hap2.scaffolds_2.fa > "${prefix}${asmversion}_combined_scaffolds.fa"
 
     # Count scaffolds in concatenated file
-    cat_fa=\$(grep -c '^>' ${prefix}${asmversion}_combined_scaffolds.fa || echo 0)
+    cat_fa=\$(grep -c '^>' "${prefix}${asmversion}_combined_scaffolds.fa")
     expected_total=\$((hap1_final + hap2_final))
 
     if [ "\$cat_fa" -ne "\$expected_total" ]; then
@@ -163,20 +180,16 @@ process CAT_SCAFFOLDS {
     fi
 
     echo "Concatenation successful. Total scaffolds: \$cat_fa"
-    
-    # Display sample headers to verify naming
-    echo "Sample scaffold headers from combined file:"
-    grep '^>' ${prefix}${asmversion}_combined_scaffolds.fa | head -5 || true
-    echo "..."
-    grep '^>' ${prefix}${asmversion}_combined_scaffolds.fa | tail -5 || true
 
     # Write comprehensive count report
     cat <<-END_COUNTS > scaffold_counts.txt
+	Haplotype 1 - Original: \$hap1_original
 	Haplotype 1 - Renamed : \$hap1_final
+	Haplotype 2 - Original: \$hap2_original
 	Haplotype 2 - Renamed : \$hap2_final
 	Combined Total        : \$cat_fa
 	Expected Total        : \$expected_total
-	Naming Format         : HAP1_SCAFFOLD_N / HAP2_SCAFFOLD_N (agp-tpf-utils compatible)
+	Naming Format         : scaffold_N -> HAP1_SCAFFOLD_N / HAP2_SCAFFOLD_N
 	Status                : SUCCESS
 	END_COUNTS
     

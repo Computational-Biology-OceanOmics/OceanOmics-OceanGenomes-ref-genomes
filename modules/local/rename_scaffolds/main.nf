@@ -22,24 +22,22 @@ process RENAME_SCAFFOLDS {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def output = "${prefix}.renamed.fa"
     """
-    # Function to rename scaffolds using sequential numbering (HAP1_SCAFFOLD_1, HAP1_SCAFFOLD_2, ...)
-    rename_scaffolds_sequential() {
+    # Rename scaffold headers while preserving the original scaffold suffix.
+    # Example: >scaffold_42 -> >HAP1_SCAFFOLD_42
+    rename_scaffolds() {
         local input_file=\$1
         local output_file=\$2
 
         echo "Renaming scaffolds in \$input_file..."
 
         awk '
-        BEGIN { counter = 1 }
         /^>/ {
-            print ">HAP1_SCAFFOLD_" counter
-            counter++
+            sub(/^>scaffold/, ">HAP1_SCAFFOLD")
+            print
             next
         }
         { print }
         ' "\$input_file" > "\$output_file"
-
-        return \$?
     }
 
     # Function to validate scaffold counts
@@ -57,7 +55,7 @@ process RENAME_SCAFFOLDS {
     }
 
     echo "Starting RENAME_SCAFFOLDS process for ${prefix}"
-    echo "Using sequential HAP1_SCAFFOLD_N naming format for agp-tpf-utils compatibility"
+    echo "Using prefix-preserving scaffold renaming: scaffold_N -> HAP1_SCAFFOLD_N"
 
     original=\$(grep -c '^>' ${fasta} || echo 0)
     echo "Original scaffold count: \$original"
@@ -67,7 +65,7 @@ process RENAME_SCAFFOLDS {
         echo "Attempt \$attempt..."
         rm -f "${output}"
 
-        if rename_scaffolds_sequential "${fasta}" "${output}"; then
+        if rename_scaffolds "${fasta}" "${output}"; then
             if [ -s "${output}" ]; then
                 renamed=\$(grep -c '^>' ${output} || echo 0)
                 first_header=\$(head -1 ${output})
@@ -107,7 +105,7 @@ process RENAME_SCAFFOLDS {
     cat <<-END_COUNTS > scaffold_counts.txt
 	Original scaffold count : \$original
 	Renamed scaffold count  : \$final
-	Naming format           : HAP1_SCAFFOLD_N (agp-tpf-utils compatible)
+	Naming format           : scaffold_N -> HAP1_SCAFFOLD_N
 	Status                  : SUCCESS
 	END_COUNTS
 
