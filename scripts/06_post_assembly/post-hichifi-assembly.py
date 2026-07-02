@@ -437,9 +437,10 @@ def main():
         )
         if jid:
             chromsyn_jids.append(jid)
-        # Stagger submissions to avoid hammering the scheduler
+        # Stagger submissions so the first job's compleasm download completes
+        # before the next job starts (avoids eukaryota_odb12.tmp lock collision)
         if i < len(og_info) - 1:
-            import time; time.sleep(5)
+            import time; time.sleep(120)
 
     # 2. Compile + push — runs immediately (does not depend on chromsyn)
     compile_jid = sbatch(compile_push_job(run_name, samplesheet), f"compile_{run_name}")

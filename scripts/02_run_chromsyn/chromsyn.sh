@@ -64,7 +64,7 @@ for GENOME in ../*.fa; do
 
   # Run Compleasm
   if [ ! -f "$RUN/run_$busco_db/full_table.tsv" ]; then
-    singularity run /software/projects/pawsey0964/singularity/compleasm:0.2.6.sif compleasm run -a $GENOME -o $RUN -t 96 -l $busco_db -L $LPATH 
+    singularity run /software/projects/pawsey0964/singularity/compleasm:0.2.7.sif compleasm run -a $GENOME -o $RUN -t 96 -l $busco_db -L $LPATH 
     
     # Cleanup Compleasm
     cp -v $RUN/summary.txt $GENBASE.$busco_db.summary.txt
