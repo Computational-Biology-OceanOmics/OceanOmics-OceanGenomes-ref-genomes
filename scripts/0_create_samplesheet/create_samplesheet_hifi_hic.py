@@ -195,7 +195,7 @@ SELECT DISTINCT ON (p.og_id)
   '' AS hap1_assembly,
   '' AS hap2_assembly
 FROM p
-LEFT JOIN ref_genomes rg ON rg.og_id = p.og_id
+LEFT JOIN ref_genomes rg ON rg.og_id = p.og_id AND rg.version LIKE 'hic%'
 LEFT JOIN latest_seq ls  ON ls.og_id = p.og_id
 LEFT JOIN smp ON smp.og_id = p.og_id
 LEFT JOIN species sp ON sp.species = smp.nominal_species_id

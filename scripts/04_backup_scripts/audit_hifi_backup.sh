@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-STAGING_BASE="/scratch/pawsey0964/lhuet/ref-gen"
+STAGING_BASE="/scratch/pawsey0964/$USER/ref-gen"
 REMOTE_READS="pawsey0964:oceanomics-filtered-reads"
 REMOTE_ASM="pawsey0964:oceanomics-refassemblies"
 CSV=""

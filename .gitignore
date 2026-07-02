@@ -26,3 +26,8 @@ scripts/03_compile_results/merqury.qv.stats.tsv
 scripts/03_compile_results/merqury_completeness_compiled_results_split.tsv
 scripts/03_compile_results/merqury_qv_compiled_results_split.tsv
 scripts/03_compile_results/omnic_compiled_results_split.tsv
+
+# Per-run configs (user-edited copies of hichifi_pipeline.conf — not shared)
+# The template hichifi_pipeline.conf is tracked; per-run copies are not.
+configs/hichifi_*_pipeline.conf
+configs/hichifi_*_*.conf

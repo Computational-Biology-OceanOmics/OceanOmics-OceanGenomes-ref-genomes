@@ -21,7 +21,7 @@ RCLONE = shutil.which("rclone") or "/software/setonix/2025.08/software/linux-sle
 
 # ── Config ──────────────────────────────────────────────────────────────────
 BUCKET  = "pawsey0964:oceanomics-refassemblies"
-TMPDIR  = Path("/scratch/pawsey0964/lhuet/stage3_backfill_tmp")
+TMPDIR  = Path(f"/scratch/pawsey0964/{os.environ['USER']}/stage3_backfill_tmp")
 CFG     = sys.argv[1] if len(sys.argv) > 1 else str(Path.home() / "postgresql_details/oceanomics.cfg")
 
 TMPDIR.mkdir(parents=True, exist_ok=True)

@@ -9,6 +9,7 @@ process RENAME_SCAFFOLDS {
 
     input:
     tuple val(meta), path(fasta)
+    tuple val(meta2), path(gfastats_summary)  // dependency: ensures gfastats completed before this task runs
 
     output:
     tuple val(meta), path("*.renamed.fa")        , emit: renamed_fasta

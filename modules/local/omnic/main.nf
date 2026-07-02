@@ -13,7 +13,7 @@ process OMNIC {
     output:
     tuple val(meta), path("*.stats.txt"), emit: omnic_stats
     tuple val(meta), path("*.mapped.PT.bam"), emit: omnic_bam
-    tuple val(meta), path("*.mapped.PT.bam.bai"), emit: omnic_bai
+    tuple val(meta), path("*.mapped.PT.bam.csi"), emit: omnic_bai
     tuple val(meta), path("*fai"), emit: omnic_fai
     path "versions.yml"           , emit: versions
 
@@ -52,7 +52,7 @@ process OMNIC {
         --output-sam - \\
     | samtools sort -@32 -T "${tempdir}/${meta.id}_temp.bam" -o "${meta.id}.${haplotype}.mapped.PT.bam" -
 
-    samtools index "${meta.id}.${haplotype}.mapped.PT.bam"
+    samtools index --csi "${meta.id}.${haplotype}.mapped.PT.bam"
 
     rm -f "${meta.id}.${haplotype}.genome" \\
           ${assembly}.amb ${assembly}.ann ${assembly}.bwt ${assembly}.pac ${assembly}.sa
@@ -69,7 +69,7 @@ process OMNIC {
     """
     touch "${meta.id}.stats.txt"
     touch "${meta.id}.mapped.PT.bam"
-    touch "${meta.id}.mapped.PT.bam.bai"
+    touch "${meta.id}.mapped.PT.bam.csi"
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

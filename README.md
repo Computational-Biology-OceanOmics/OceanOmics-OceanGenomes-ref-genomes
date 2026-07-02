@@ -199,6 +199,21 @@ nextflow run Computational-Biology-OceanOmics/OceanGenomes-refgenomes \
 
 For more details and further functionality, please refer to the [usage documentation](https://github.com/Computational-Biology-OceanOmics/OceanOmics-OceanGenomes-ref-genomes/blob/master/docs/usage.md) and the [parameter documentation](https://github.com/Computational-Biology-OceanOmics/OceanOmics-OceanGenomes-ref-genomes/blob/master/docs/parameters.md).
 
+## Running a HiFi+HiC assembly batch yourself (manual / unattended run)
+
+In addition to launching `nextflow run` directly as above, the `hifi_hic` mode
+can be run end-to-end with a single config file + a single script — it creates
+the samplesheet, stages HiFi/HiC data from Acacia, runs Nextflow inside a tmux
+session (launched automatically — safe to run unattended), and on completion
+backs up results to Acacia and pushes QC results to the database:
+
+```bash
+# Edit RUN_NAME / OG_IDS in ref-gen/configs/hichifi_pipeline.conf, then:
+bash ref-gen/configs/hichifi_run.sh ref-gen/configs/hichifi_pipeline.conf
+```
+
+Full step-by-step instructions: [`docs/manual_hichifi_run.md`](docs/manual_hichifi_run.md)
+
 ## Pipeline output
 
 For details about the output files and reports, please refer to the

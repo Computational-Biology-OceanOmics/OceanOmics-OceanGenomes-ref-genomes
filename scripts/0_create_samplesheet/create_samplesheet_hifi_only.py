@@ -9,7 +9,7 @@ table; if absent, falls back to the run-date embedded in SAMPLESHEET_FILENAME_PR
 Required config keys:
   POSTGRES_CFG=~/postgresql_details/oceanomics.cfg
   OG_IDS="OG38,OG39"
-  STAGING_BASE_DIR=/scratch/pawsey0964/lhuet/ref-gen
+  STAGING_BASE_DIR=/scratch/pawsey0964/$USER/ref-gen
 
 Optional:
   SAMPLESHEET_OUTPUT_DIR=/path/to/assets

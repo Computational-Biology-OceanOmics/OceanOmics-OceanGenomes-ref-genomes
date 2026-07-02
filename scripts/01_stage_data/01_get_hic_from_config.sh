@@ -56,6 +56,8 @@ rclone ls "$HIC_BUCKET" ${RCLONE_FLAGS:+$RCLONE_FLAGS} "${include[@]}" > "$tmp_l
 while IFS= read -r line || [[ -n "$line" ]]; do
   path="$(printf '%s' "$line" | sed -E 's/^[[:space:]]*[0-9]+[[:space:]]+//; s/\r$//')"
   og="$(printf '%s' "$path" | grep -o -m1 -E 'OG[0-9]+' || true)"
+  # First path component is the run_id (e.g. NOVA_260605_AD/OG2088/...).
+  run_id="$(printf '%s' "$path" | cut -d/ -f1)"
 
   target=""
   if [[ -n "$og" && -n "${HIC_DIR_MAP[$og]:-}" ]]; then
@@ -75,6 +77,10 @@ if [[ -z "$target" ]]; then
   exit 1
 fi
 
+  # Namespace by run_id: NovaSeq reuses lane/sample-index naming across runs,
+  # so staging multiple runs into one flat directory can silently overwrite
+  # an earlier run's reads with a later one's. Each run gets its own subdir.
+  target="${target}/${run_id}"
   mkdir -p "$target"
   echo "Copying ${HIC_BUCKET}/${path} -> ${target}/"
   rclone copy ${RCLONE_FLAGS:+$RCLONE_FLAGS} "${HIC_BUCKET}/${path}" "${target}/"

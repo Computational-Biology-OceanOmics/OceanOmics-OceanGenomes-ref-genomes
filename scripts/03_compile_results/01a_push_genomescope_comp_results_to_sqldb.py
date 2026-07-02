@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-# singularity run $SING/psycopg2:0.1.sif python 01a_push_genomescope_comp_results_to_sqldb.py ~/postgresql_details/oceanomics.cfg
+# singularity run $SING/psycopg2:0.1.sif python 01a_push_genomescope_comp_results_to_sqldb.py ~/postgresql_details/oceanomics.cfg [samplesheet.csv]
 
+import csv
+import urllib.request
+import xml.etree.ElementTree as ET
 import psycopg2
 import pandas as pd
 import numpy as np  # Required for handling infinity values
 import configparser
 import sys
-from pathlib import Path  # ✅ you used Path but didn't import it
+from pathlib import Path
 
 # -------------------------------
 # Load DB credentials from .cfg
 # -------------------------------
 def load_db_config(config_file):
+    config_file = str(Path(config_file).expanduser())
     if not Path(config_file).exists():
         raise FileNotFoundError(f"❌ Config file '{config_file}' does not exist.")
     config = configparser.ConfigParser()
@@ -30,18 +34,64 @@ def load_db_config(config_file):
         'port': config.getint('postgres', 'port')
     }
 
+FISH_GENOME_DEFAULT = 1_000_000_000  # 1 GB fallback for fish with failed GenomeScope model
+
+# ---- load taxid → og_id mapping from samplesheet ----
+def load_taxids(samplesheet_path):
+    taxids = {}
+    path = Path(samplesheet_path).expanduser()
+    if not path.exists():
+        print(f"WARNING: samplesheet not found: {samplesheet_path} — fish genome default will not apply")
+        return taxids
+    with open(path) as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            og = row.get('sample', '').strip().split('_')[0]
+            taxid = row.get('taxid', '').strip()
+            if og and taxid:
+                taxids[og] = taxid
+    return taxids
+
+# ---- check if NCBI taxid is a fish (Actinopterygii or Chondrichthyes) ----
+_fish_cache = {}
+
+def is_fish(taxid):
+    if not taxid:
+        return False
+    taxid = str(taxid).strip()
+    if taxid in _fish_cache:
+        return _fish_cache[taxid]
+    try:
+        url = (f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
+               f"?db=taxonomy&id={taxid}&retmode=xml")
+        with urllib.request.urlopen(url, timeout=15) as r:
+            lineage = ET.fromstring(r.read()).findtext('.//Lineage') or ''
+        result = 'Actinopterygii' in lineage or 'Chondrichthyes' in lineage
+    except Exception as e:
+        print(f"  WARNING: NCBI taxonomy lookup failed for taxid {taxid}: {e}")
+        result = False
+    _fish_cache[taxid] = result
+    return result
+
 # ---- tiny helper to parse numbers the way your code intended ----
 def parse_num(val, int_like=False):
     s = str(val).strip().replace(",", "").replace("%", "")
-    if s == "" or s.lower() == "nan":
+    if s == "" or s.lower() in ("nan", "na"):
         return None
     try:
         return int(s) if int_like else float(s)
     except ValueError:
         return None
 
-# Config file path
+# Config file path and optional samplesheet
 config_file = sys.argv[1]
+samplesheet = sys.argv[2] if len(sys.argv) > 2 else None
+
+taxid_map = load_taxids(samplesheet) if samplesheet else {}
+if taxid_map:
+    print(f"Loaded taxids for {len(taxid_map)} OGs from samplesheet")
+else:
+    print("No samplesheet provided — fish genome size default will not be applied")
 
 genomescope_compiled_path = "genomescope_compiled_results.tsv"
 
@@ -69,16 +119,27 @@ try:
     row_count = 0
 
     for _, row in genomescope.iterrows():
-        # Build params with minimal parsing (same fields you used)
+        og_id = row["og_id"]
+        homozygosity = parse_num(row.get("homozygosity"), int_like=False)
+        genomesize   = parse_num(row.get("genomesize"), int_like=True)
+
+        # If the model failed (homo is NULL because it was 100%) and the sample
+        # is a fish, use 1 GB as the genome size estimate for coverage calculations.
+        if homozygosity is None and taxid_map:
+            taxid = taxid_map.get(og_id)
+            if is_fish(taxid):
+                print(f"  {og_id}: model failed + fish (taxid {taxid}) — applying 1 GB genome size default")
+                genomesize = FISH_GENOME_DEFAULT
+
         params = {
-            "og_id": row["og_id"],
-            "homozygosity": parse_num(row.get("homozygosity"), int_like=False), # FLOAT
-            "heterozygosity": parse_num(row.get("heterozygosity"), int_like=False), # FLOAT
-            "genomesize": parse_num(row.get("genomesize"), int_like=True), # BIGINT
-            "repeatsize": parse_num(row.get("repeatsize"), int_like=True), # BIGINT
-            "uniquesize": parse_num(row.get("uniquesize"), int_like=True), # BIGINT
-            "modelfit": parse_num(row.get("modelfit"), int_like=False), # FLOAT
-            "errorrate": parse_num(row.get("errorrate"), int_like=False), # FLOAT
+            "og_id": og_id,
+            "homozygosity": homozygosity,
+            "heterozygosity": parse_num(row.get("heterozygosity"), int_like=False),
+            "genomesize": genomesize,
+            "repeatsize": parse_num(row.get("repeatsize"), int_like=True),
+            "uniquesize": parse_num(row.get("uniquesize"), int_like=True),
+            "modelfit": parse_num(row.get("modelfit"), int_like=False),
+            "errorrate": parse_num(row.get("errorrate"), int_like=False),
         }
 
         upsert_query = """

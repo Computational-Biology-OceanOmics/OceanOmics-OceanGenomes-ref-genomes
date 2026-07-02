@@ -33,6 +33,7 @@ include { GFASTATS2 as GFASTATS_HAP2_FINAL                } from '../modules/loc
 include { BUSCO_BUSCO as BUSCO_BUSCO_FINAL               } from '../modules/nf-core/busco/busco/main'
 include { BUSCO_GENERATEPLOT as BUSCO_GENERATEPLOT_FINAL } from '../modules/nf-core/busco/generateplot/main'
 include { CAT_SCAFFOLDS                                  } from '../modules/local/cat_scaffolds/main'
+include { VALIDATE_SCAFFOLD_COUNTS                       } from '../modules/local/validate_scaffold_counts/main'
 // PREPARE_SINGLE_HAPLOTYPE_OUTPUTS replaced by SINGLE_HAPLOTYPE subworkflow
 include { TAR                                            } from '../modules/local/tar/main'
 include { COVERAGE_TRACKS                                } from '../subworkflows/local/coverage_tracks/main'
@@ -632,15 +633,32 @@ workflow REFGENOMES {
             return [ meta, [ hap1_scaffolds, hap2_scaffolds ] ]
         }
 
+    // Join gfastats outputs so CAT_SCAFFOLDS has a hard dependency on them.
+    // This prevents stale-cache mismatches: if BBMAP re-runs (new scaffold count),
+    // gfastats re-runs too, which invalidates the CAT_SCAFFOLDS cache and forces it
+    // to re-run with the new input rather than returning a cached result.
+    ch_cat_gfastats = GFASTATS_HAP1_FINAL.out.assembly_summary
+        .join(GFASTATS_HAP2_FINAL.out.assembly_summary)
+
     CAT_SCAFFOLDS (
         ch_filtered_scaffolds,
-        ".2.tiara.hap1.hap2"
+        ".2.tiara.hap1.hap2",
+        ch_cat_gfastats
     )
     ch_versions = ch_versions.mix(CAT_SCAFFOLDS.out.versions.first())
 
     ch_combined_scaffolds = CAT_SCAFFOLDS.out.cat_file
     ch_hap1_scaffolds     = CAT_SCAFFOLDS.out.hap1_scaffold
     ch_hap2_scaffolds     = CAT_SCAFFOLDS.out.hap2_scaffold
+
+    // Cross-validate gfastats scaffold counts vs scaffold_counts.txt.
+    // Fails loudly if they disagree (indicates a resume cache inconsistency).
+    ch_validate = CAT_SCAFFOLDS.out.count_report
+        .join(GFASTATS_HAP1_FINAL.out.assembly_summary)
+        .join(GFASTATS_HAP2_FINAL.out.assembly_summary)
+
+    VALIDATE_SCAFFOLD_COUNTS ( ch_validate )
+    ch_versions = ch_versions.mix(VALIDATE_SCAFFOLD_COUNTS.out.versions.first())
 
     //
     // SUBWORKFLOW: Run TELO_FINDER

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-AUDITOR="$(dirname "$0")/audit_backup.sh"
-CSV_FILE="/scratch/pawsey0964/lhuet/ref-gen/OceanOmics-OceanGenomes-ref-genomes/assets/samplesheet.csv"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+AUDITOR="${SCRIPT_DIR}/audit_backup.sh"
+CSV_FILE="${REPO_DIR}/assets/samplesheet.csv"
 REMOTE="pawsey0964:oceanomics-refassemblies"
 
 # You can override with: ./audit_loop.sh /path/to/sheet.csv

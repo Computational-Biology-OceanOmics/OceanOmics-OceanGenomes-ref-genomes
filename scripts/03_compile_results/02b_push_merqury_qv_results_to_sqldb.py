@@ -66,6 +66,18 @@ def safe_us_part(s, us_idx, dot_idx=0):
 # Args & input
 # -------------------------------
 config_file = sys.argv[1]
+samplesheet = sys.argv[2] if len(sys.argv) > 2 else None
+
+version_map = {}
+if samplesheet:
+    import csv
+    with open(samplesheet) as f:
+        for row in csv.DictReader(f):
+            og = (row.get("sample") or "").strip()
+            ver = (row.get("version") or "").strip()
+            if og and ver:
+                version_map[og] = ver
+
 merqury_compiled_path = "merqury.qv.stats.tsv"
 
 print(f"Importing data from {merqury_compiled_path}")
@@ -107,11 +119,16 @@ try:
     row_count = 0
 
     for _, row in merqury.iterrows():
+        og_id = row.get("og_id")
+        if og_id not in version_map:
+            print(f"⏭️  Skipping {og_id}: not in current samplesheet")
+            continue
         params = {
-            "og_id": row.get("og_id"),
+            "og_id": og_id,
             "seq_date": row.get("seq_date"),
             "stage": parse_int(row.get("stage")),
             "haplotype": row.get("haplotype"),
+            "version": version_map.get(og_id),
             "unique_k_mers_assembly": parse_int(row.get("unique_k_mers_assembly")),
             "k_mers_total": parse_int(row.get("k_mers_total")),
             "qv": parse_float(row.get("qv")),
@@ -120,12 +137,12 @@ try:
 
         upsert_query = """
         INSERT INTO ref_genomes (
-            og_id, seq_date, stage, haplotype, unique_k_mers_assembly, k_mers_total, qv, error
+            og_id, seq_date, stage, haplotype, version, unique_k_mers_assembly, k_mers_total, qv, error
         )
         VALUES (
-            %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(unique_k_mers_assembly)s, %(k_mers_total)s, %(qv)s, %(error)s
+            %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(version)s, %(unique_k_mers_assembly)s, %(k_mers_total)s, %(qv)s, %(error)s
         )
-        ON CONFLICT (og_id, seq_date, stage, haplotype) DO UPDATE SET
+        ON CONFLICT (og_id, seq_date, stage, haplotype, version) DO UPDATE SET
             unique_k_mers_assembly = EXCLUDED.unique_k_mers_assembly,
             k_mers_total = EXCLUDED.k_mers_total,
             qv = EXCLUDED.qv,

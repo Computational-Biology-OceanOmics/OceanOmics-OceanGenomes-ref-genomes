@@ -1,8 +1,9 @@
 import os
+import sys
 import csv
 
-# Define the base directory where the samples are stored
-base_dir = "/scratch/pawsey0964/lhuet/ref-gen"  # Change this to the correct path
+# Accept base directory as CLI arg; fall back to standard scratch layout for the current user
+base_dir = sys.argv[1] if len(sys.argv) > 1 else f"/scratch/pawsey0964/{os.environ['USER']}/ref-gen"
 output_tsv = "hifiadaptorfilt_stats_summary.tsv"
 
 # Dictionary to accumulate totals per sample

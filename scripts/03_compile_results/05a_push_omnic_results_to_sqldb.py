@@ -49,6 +49,17 @@ def safe_us_part(s, us_idx):
 # Args & input
 # -------------------------------
 config_file = sys.argv[1]
+samplesheet = sys.argv[2] if len(sys.argv) > 2 else None
+
+version_map = {}
+if samplesheet:
+    import csv
+    with open(samplesheet) as f:
+        for row in csv.DictReader(f):
+            og = (row.get("sample") or "").strip()
+            ver = (row.get("version") or "").strip()
+            if og and ver:
+                version_map[og] = ver
 
 # File containing Omni-C stats data (tab-delimited)
 omnic_path = "final_omnic_stats_report.txt"  # adjust if needed
@@ -103,11 +114,16 @@ try:
     row_count = 0
 
     for _, row in omnic.iterrows():
+        og_id = row.get("og_id")
+        if og_id not in version_map:
+            print(f"⏭️  Skipping {og_id}: not in current samplesheet")
+            continue
         params = {
-            "og_id": row.get("og_id"),                 # TEXT
+            "og_id": og_id,                            # TEXT
             "seq_date": row.get("seq_date"),           # TEXT/DATE
             "stage": parse_int(row.get("stage")),      # INT
             "haplotype": row.get("haplotype"),         # TEXT ('hap1','hap2','dual', etc.)
+            "version": version_map.get(og_id),         # TEXT
             "total": parse_int(row.get("total")),                                      # BIGINT
             "total_unmapped": parse_int(row.get("total_unmapped")),                    # BIGINT
             "total_single_sided_mapped": parse_int(row.get("total_single_sided_mapped")),  # BIGINT
@@ -120,14 +136,14 @@ try:
 
         upsert_query = """
         INSERT INTO ref_genomes (
-            og_id, seq_date, stage, haplotype, total, total_unmapped, total_single_sided_mapped, total_mapped,
+            og_id, seq_date, stage, haplotype, version, total, total_unmapped, total_single_sided_mapped, total_mapped,
             total_dups, total_nodups, cis, trans
         )
         VALUES (
-            %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(total)s, %(total_unmapped)s, %(total_single_sided_mapped)s, %(total_mapped)s,
+            %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(version)s, %(total)s, %(total_unmapped)s, %(total_single_sided_mapped)s, %(total_mapped)s,
             %(total_dups)s, %(total_nodups)s, %(cis)s, %(trans)s
         )
-        ON CONFLICT (og_id, seq_date, stage, haplotype) DO UPDATE SET
+        ON CONFLICT (og_id, seq_date, stage, haplotype, version) DO UPDATE SET
             total = EXCLUDED.total,
             total_unmapped = EXCLUDED.total_unmapped,
             total_single_sided_mapped = EXCLUDED.total_single_sided_mapped,

@@ -189,8 +189,11 @@ workflow SINGLE_HAPLOTYPE {
     //
     // STEP 9: RENAME_SCAFFOLDS - rename sequences with sequential SCAFFOLD_N names
     //
+    // Pass gfastats summary as a hard dependency so that if BBMAP re-runs on resume,
+    // gfastats re-runs too and invalidates the RENAME_SCAFFOLDS cache. Prevents stale output.
     RENAME_SCAFFOLDS (
-        BBMAP_FILTERBYNAME_SH.out.scaffolds
+        BBMAP_FILTERBYNAME_SH.out.scaffolds,
+        GFASTATS2_SH.out.assembly_summary
     )
     ch_versions = ch_versions.mix(RENAME_SCAFFOLDS.out.versions.first())
 

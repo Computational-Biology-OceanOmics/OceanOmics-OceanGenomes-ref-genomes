@@ -22,7 +22,18 @@ process CAT_HIC {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     mkdir cat_files
-    cp $files/* .
+
+    # $files may contain run-id subdirectories when an OG has Hi-C data from
+    # multiple sequencing runs (e.g. an original run plus later top-up
+    # sequencing). Flatten recursively, prefixing each file with its relative
+    # path so identically-named files from different runs (NovaSeq reuses the
+    # same lane/sample-index naming across runs) don't silently overwrite each
+    # other before concatenation.
+    find -L $files -type f -name '*.fastq.gz' | while read -r f; do
+        rel="\${f#$files/}"
+        safe="\$(printf '%s' "\$rel" | tr '/' '__')"
+        cp "\$f" "./\$safe"
+    done
 
     if [ "\$(ls *R1*fastq.gz 2>/dev/null | wc -l)" -gt 1 ]; then
         cat \\

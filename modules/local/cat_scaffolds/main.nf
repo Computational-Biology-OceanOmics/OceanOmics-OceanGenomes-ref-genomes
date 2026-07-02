@@ -10,12 +10,13 @@ process CAT_SCAFFOLDS {
     input:
     tuple val(meta), path(scaffolds)
     val asmversion
+    tuple val(meta2), path(hap1_gfastats), path(hap2_gfastats)  // dependency: ensures gfastats completed before this task runs
 
     output:
     tuple val(meta), path("*_combined_scaffolds.fa"), emit: cat_file
     tuple val(meta), path("*hap1.scaffolds_1.fa")     , emit: hap1_scaffold
     tuple val(meta), path("*hap2.scaffolds_2.fa")     , emit: hap2_scaffold
-    path  "scaffold_counts.txt"                       , emit: count_report
+    tuple val(meta), path("scaffold_counts.txt")       , emit: count_report
     path  "versions.yml"                           , emit: versions
 
     when:

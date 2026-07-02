@@ -65,6 +65,18 @@ def safe_us_part(s, us_idx, dot_idx=0):
 # Args & input
 # -------------------------------
 config_file = sys.argv[1]
+samplesheet = sys.argv[2] if len(sys.argv) > 2 else None
+
+# Load version map from samplesheet {sample -> version}
+version_map = {}
+if samplesheet:
+    import csv
+    with open(samplesheet) as f:
+        for row in csv.DictReader(f):
+            og = (row.get("sample") or "").strip()
+            ver = (row.get("version") or "").strip()
+            if og and ver:
+                version_map[og] = ver
 
 # File containing gfastats data (tab-delimited)
 gfa_compiled_path = "final_gfastats_report.txt"  # adjust if needed
@@ -105,11 +117,16 @@ try:
     row_count = 0
 
     for _, row in gfa.iterrows():
+        og_id = row.get("og_id")
+        if og_id not in version_map:
+            print(f"⏭️  Skipping {og_id}: not in current samplesheet")
+            continue
         params = {
-            "og_id": row.get("og_id"),                      # TEXT
+            "og_id": og_id,                                  # TEXT
             "seq_date": row.get("seq_date"),                # TEXT/DATE
             "stage": parse_int(row.get("stage")),           # INT
             "haplotype": row.get("haplotype"),              # TEXT (can be None)
+            "version": version_map.get(og_id),              # TEXT
             "num_contigs": parse_int(row.get("num_contigs")),                              # INT
             "contig_n50": parse_int(row.get("contig_n50")),                                # BIGINT
             "contig_n50_size_mb": parse_float(row.get("contig_n50_size_mb")),              # FLOAT
@@ -125,14 +142,14 @@ try:
 
         upsert_query = """
         INSERT INTO ref_genomes (
-            og_id, seq_date, stage, haplotype, num_contigs, contig_n50, contig_n50_size_mb, num_scaffolds,
+            og_id, seq_date, stage, haplotype, version, num_contigs, contig_n50, contig_n50_size_mb, num_scaffolds,
             scaffold_n50, scaffold_n50_size_mb, largest_scaffold, largest_scaffold_size_mb, total_scaffold_length, total_scaffold_length_size_mb, gc_content_percent
         )
         VALUES (
-            %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(num_contigs)s, %(contig_n50)s, %(contig_n50_size_mb)s, %(num_scaffolds)s,
+            %(og_id)s, %(seq_date)s, %(stage)s, %(haplotype)s, %(version)s, %(num_contigs)s, %(contig_n50)s, %(contig_n50_size_mb)s, %(num_scaffolds)s,
             %(scaffold_n50)s, %(scaffold_n50_size_mb)s, %(largest_scaffold)s, %(largest_scaffold_size_mb)s, %(total_scaffold_length)s, %(total_scaffold_length_size_mb)s, %(gc_content_percent)s
         )
-        ON CONFLICT (og_id, seq_date, stage, haplotype) DO UPDATE SET
+        ON CONFLICT (og_id, seq_date, stage, haplotype, version) DO UPDATE SET
             num_contigs = EXCLUDED.num_contigs,
             contig_n50 = EXCLUDED.contig_n50,
             contig_n50_size_mb = EXCLUDED.contig_n50_size_mb,

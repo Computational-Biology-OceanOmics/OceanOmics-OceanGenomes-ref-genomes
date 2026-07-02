@@ -16,17 +16,20 @@
 #   sbatch genomesope.sh <samplesheet.csv> [OG1,OG2,...]
 #
 #SBATCH --job-name=genomescope_rerun
-#SBATCH --account=pawsey1348
+#SBATCH --account=pawsey0964
 #SBATCH --partition=work
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=8G
 #SBATCH --time=01:00:00
 #SBATCH --export=ALL
+#SBATCH --output=%x-%j.out
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=lauren.huet@uwa.edu.au
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-STAGING_BASE="/scratch/pawsey0964/lhuet/ref-gen"
+STAGING_BASE="/scratch/pawsey0964/$USER/ref-gen"
 SING="/software/projects/pawsey0964/singularity"
 GENOMESCOPE_SIF="${SING}/genomescope2:2.0.sif"
 
@@ -56,26 +59,34 @@ get_max_homozygosity() {
 # ── Parse samplesheet ─────────────────────────────────────────────────────────
 
 # Build arrays from the CSV (skip header)
-declare -A OG_DATE   # og_id → date (e.g. v260408)
+declare -A OG_DATE
+declare -A OG_VER
 
-while IFS=',' read -r sample hifi_dir hic_dir version date tolid taxid species rest; do
-    [[ "$sample" == "sample" ]] && continue   # header
+while IFS=',' read -r sample hifi_dir hic_dir version date rest; do
+    [[ "$sample" == "sample" ]] && continue
     [[ -z "$sample" ]] && continue
     OG_DATE["$sample"]="$date"
+    OG_VER["$sample"]="$version"
 done < "$SAMPLESHEET"
 
 # Apply OG filter if provided
 if [[ -n "$OG_FILTER" ]]; then
-    declare -A FILTERED
+    declare -A FDATE
+    declare -A FVER
     IFS=',' read -ra FILTER_LIST <<< "$OG_FILTER"
     for og in "${FILTER_LIST[@]}"; do
         og="${og// /}"
-        [[ -n "${OG_DATE[$og]+x}" ]] && FILTERED["$og"]="${OG_DATE[$og]}"
+        if [[ -n "${OG_DATE[$og]+x}" ]]; then
+            FDATE["$og"]="${OG_DATE[$og]}"
+            FVER["$og"]="${OG_VER[$og]}"
+        fi
     done
-    unset OG_DATE
+    unset OG_DATE OG_VER
     declare -A OG_DATE
-    for og in "${!FILTERED[@]}"; do
-        OG_DATE["$og"]="${FILTERED[$og]}"
+    declare -A OG_VER
+    for og in "${!FDATE[@]}"; do
+        OG_DATE["$og"]="${FDATE[$og]}"
+        OG_VER["$og"]="${FVER[$og]}"
     done
 fi
 
@@ -90,9 +101,14 @@ REPLACED_OGS=()
 
 for og in $(echo "${!OG_DATE[@]}" | tr ' ' '\n' | sort); do
     date="${OG_DATE[$og]}"
+    ver="${OG_VER[$og]}"
     gscope_dir="${STAGING_BASE}/${og}/02-kmer-profiling/genomescope2"
     summary="${gscope_dir}/${og}_genomescope_summary.txt"
-    hist="${STAGING_BASE}/${og}/02-kmer-profiling/meryl/${og}_${date}.hic1.hist"
+    # Prefer exact path from samplesheet; fall back to glob when version mismatches
+    hist="${STAGING_BASE}/${og}/02-kmer-profiling/meryl/${og}_${date}.${ver}.hist"
+    if [[ ! -f "$hist" ]]; then
+        hist=$(ls "${STAGING_BASE}/${og}/02-kmer-profiling/meryl/"*.hist 2>/dev/null | head -1)
+    fi
 
     # ── Check if summary exists ───────────────────────────────────────────────
     if [[ ! -f "$summary" ]]; then
@@ -120,12 +136,12 @@ for og in $(echo "${!OG_DATE[@]}" | tr ' ' '\n' | sort); do
     tmp_dir="${gscope_dir}/_rerun_l50"
     mkdir -p "$tmp_dir"
 
+    # Do NOT pass --testing: that forces TESTING mode again, defeating the purpose
     singularity run "$GENOMESCOPE_SIF" genomescope2 \
         --input "$hist" \
         -l 50 \
         --output "$tmp_dir" \
         --name_prefix "${og}_genomescope" \
-        --testing \
         -p 2
 
     new_summary="${tmp_dir}/${og}_genomescope_summary.txt"

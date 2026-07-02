@@ -51,7 +51,7 @@ rclone copy ${OG}/01-data-processing/hifiadaptfilt/${OG}_${date}.${asm_ver}/ paw
 
 ##back up kmer profilling (genomescope and meryl)
 rclone copy ${OG}/02-kmer-profiling/genomescope2/ pawsey0964:oceanomics-refassemblies/${OG}/genomescope --checksum --progress
-rclone copy ${OG}/02-kmer-profiling/${OG}_${date}.${asm_ver}.meryl.tar.gz/ pawsey0964:oceanomics-refassemblies/${OG}/meryl --checksum --progress
+rclone copy "${OG}/02-kmer-profiling/meryl/${OG}_${date}.${asm_ver}.meryl.tar.gz" "pawsey0964:oceanomics-refassemblies/${OG}/meryl" --checksum --progress
 
 #Back up hifiasm assemblies and gfa stats
 # 1.Assemblies
@@ -60,7 +60,15 @@ rclone copy ${OG}/03-assembly/gfastats-hifi/${OG}_${date}.${asm_ver}.0.hifiasm.p
 rclone copy ${OG}/03-assembly/hifi/${OG}_${date}.${asm_ver}.0.hifiasm.p_ctg.gfa pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/assembly --checksum --progress
 rclone copy ${OG}/03-assembly/hifi/${OG}_${date}.${asm_ver}.0.hifiasm.a_ctg.gfa pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/assembly --checksum --progress
 
-#gfastats 
+#gfastats
 rclone copy ${OG}/03-assembly/gfastats-hifi/${OG}_${date}.${asm_ver}.0.hifiasm.a_ctg.assembly_summary.txt pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/gfastats --checksum --progress
 rclone copy ${OG}/03-assembly/gfastats-hifi/${OG}_${date}.${asm_ver}.0.hifiasm.p_ctg.assembly_summary.txt pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${date}.${asm_ver}/gfastats --checksum --progress
+
+# Back up MultiQC report
+if [[ -d ${OG}/multiqc ]]; then
+    rclone copy ${OG}/multiqc/ pawsey0964:oceanomics-refassemblies/${OG}/multiqc --checksum --progress
+    echo "MultiQC backed up for ${OG}"
+else
+    echo "WARNING: no multiqc directory found for ${OG} — skipping"
+fi
 
