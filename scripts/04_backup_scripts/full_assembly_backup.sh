@@ -58,14 +58,46 @@ echo "==========================="
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 
+# Every transfer is copied then immediately verified with `rclone check --checksum
+# --one-way`. Sources that don't exist are skipped (many are mode-specific), but
+# copy or verification failures are counted and reported in a summary at the end;
+# the script exits non-zero if anything failed.
+FAILURES=0
+FAILED_ITEMS=()
+SKIPPED_ITEMS=()
+
 rclone_copy() {
     local src="$1"
     local dst="$2"
-    if [[ -e "$src" ]]; then
-        rclone copy "$src" "pawsey0964:oceanomics-refassemblies/$dst" --checksum --progress
-    else
+
+    # dst may already be a full remote path; otherwise it is relative to the
+    # refassemblies bucket
+    [[ "$dst" == *:* ]] || dst="pawsey0964:oceanomics-refassemblies/$dst"
+
+    if [[ ! -e "$src" ]]; then
         echo "SKIP (not found): $src"
+        SKIPPED_ITEMS+=("$src")
+        return 0
     fi
+
+    echo "--- Backing up: $src -> $dst"
+
+    if ! rclone copy "$src" "$dst" --checksum --progress; then
+        echo "    [FAIL] rclone copy failed"
+        FAILURES=$((FAILURES + 1))
+        FAILED_ITEMS+=("copy failed: $src")
+        return 1
+    fi
+
+    if ! rclone check "$src" "$dst" --checksum --one-way; then
+        echo "    [FAIL] rclone check mismatch"
+        FAILURES=$((FAILURES + 1))
+        FAILED_ITEMS+=("check failed: $src")
+        return 1
+    fi
+
+    echo "    [OK] verified"
+    return 0
 }
 
 # ── Shared: tar and back up meryl k-mer database ──────────────────────────────
@@ -201,8 +233,8 @@ if [[ "$mode" == "hifi_hic" ]]; then
     rclone_copy "${OG}/09-chromsyn/${OG}.hapsyn.pdf" \
         "${OG}/${OG}_${asm_ver}/chromsyn"
 
-    rclone copy "${OG}/multiqc" \
-        "pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${asm_ver}/multiqc"
+    rclone_copy "${OG}/multiqc" \
+        "${OG}/${OG}_${asm_ver}/multiqc"
 
 fi
 
@@ -303,8 +335,8 @@ if [[ "$mode" == "dual_hap" ]]; then
     rclone_copy "${OG}/09-chromsyn/${OG}.hapsyn.pdf" \
         "${OG}/${OG}_${asm_ver}/chromsyn"
 
-    rclone copy "${OG}/multiqc" \
-        "pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${asm_ver}/multiqc"
+    rclone_copy "${OG}/multiqc" \
+        "${OG}/${OG}_${asm_ver}/multiqc"
 
 fi
 
@@ -369,9 +401,31 @@ if [[ "$mode" == "single_hap" ]]; then
     rclone_copy "${OG}/08-pretext-sh/" \
         "${OG}/${OG}_${asm_ver}/pretext"
 
-    rclone copy "${OG}/multiqc" \
-        "pawsey0964:oceanomics-refassemblies/${OG}/${OG}_${asm_ver}/multiqc"
+    rclone_copy "${OG}/multiqc" \
+        "${OG}/${OG}_${asm_ver}/multiqc"
 
 fi
 
-echo "=== Backup complete for $OG ($asm_ver) [$mode] ==="
+# ═════════════════════════════════════════════════════════════════════════════
+# Summary
+# ═════════════════════════════════════════════════════════════════════════════
+echo ""
+echo "=== Backup summary: ${OG}_${asm_ver} [$mode] ==="
+if [[ ${#SKIPPED_ITEMS[@]} -gt 0 ]]; then
+    echo "${#SKIPPED_ITEMS[@]} source(s) not found and skipped:"
+    for item in "${SKIPPED_ITEMS[@]}"; do
+        echo "  - $item"
+    done
+fi
+
+if [[ $FAILURES -eq 0 ]]; then
+    echo "=== Backup complete for $OG ($asm_ver) [$mode] — all transfers verified with rclone check ==="
+    exit 0
+else
+    echo "${FAILURES} transfer(s) failed:"
+    for item in "${FAILED_ITEMS[@]}"; do
+        echo "  - $item"
+    done
+    echo "=== Backup FAILED for $OG ($asm_ver) [$mode] ==="
+    exit 1
+fi
