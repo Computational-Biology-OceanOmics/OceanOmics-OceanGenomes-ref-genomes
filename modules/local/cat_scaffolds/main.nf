@@ -60,17 +60,14 @@ process CAT_SCAFFOLDS {
     echo "Starting CAT_SCAFFOLDS process for ${prefix}"
     echo "Using prefix-preserving scaffold renaming: scaffold_N -> HAP1_SCAFFOLD_N / HAP2_SCAFFOLD_N"
 
-    echo "Counting original scaffolds..."
-    hap1_original=\$(grep -c '^>' "${prefix}.2.tiara.hap1_scaffolds.fa")
-    hap2_original=\$(grep -c '^>' "${prefix}.2.tiara.hap2_scaffolds.fa")
-
-    echo "Original counts - Hap1: \$hap1_original, Hap2: \$hap2_original"
-
     # Process Hap1 scaffolds with retry logic
     echo "Processing Hap1 scaffolds..."
     hap1_success=false
     for attempt in 1 2 3; do
         echo "Hap1 attempt \$attempt"
+        # Count inside loop so Lustre has time to fully flush large files before retry
+        hap1_original=\$(grep -c '^>' "${prefix}.2.tiara.hap1_scaffolds.fa")
+        echo "Hap1 original count: \$hap1_original"
         rm -f "${prefix}.hap1.scaffolds_1.fa"
 
         if rename_scaffolds "${prefix}.2.tiara.hap1_scaffolds.fa" "${prefix}.hap1.scaffolds_1.fa" "HAP1_SCAFFOLD"; then
@@ -111,6 +108,9 @@ process CAT_SCAFFOLDS {
     hap2_success=false
     for attempt in 1 2 3; do
         echo "Hap2 attempt \$attempt"
+        # Count inside loop so Lustre has time to fully flush large files before retry
+        hap2_original=\$(grep -c '^>' "${prefix}.2.tiara.hap2_scaffolds.fa")
+        echo "Hap2 original count: \$hap2_original"
         rm -f "${prefix}.hap2.scaffolds_2.fa"
 
         if rename_scaffolds "${prefix}.2.tiara.hap2_scaffolds.fa" "${prefix}.hap2.scaffolds_2.fa" "HAP2_SCAFFOLD"; then

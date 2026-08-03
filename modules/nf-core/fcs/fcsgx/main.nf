@@ -31,27 +31,28 @@ process FCS_FCSGX {
     """
 
     export NXF_SINGULARITY_NEW_PID_NAMESPACE=false
-    
-    echo 'copying database files to /tmp/'
-    mkdir -p /tmp/gxdb/
-    cp -v ${gxdb}/all.gxi /tmp/gxdb/
-    cp -v ${gxdb}/all.gxs /tmp/gxdb/
-    cp -v ${gxdb}/all.meta.jsonl /tmp/gxdb/
-    cp -v ${gxdb}/all.blast_div.tsv.gz /tmp/gxdb/
-    cp -v ${gxdb}/all.taxa.tsv /tmp/gxdb/
-    echo 'done copying database files'
-    ls -l /tmp/gxdb/
 
+    GXDB_TMP=/dev/shm/gxdb_\${SLURM_JOB_ID:-\${NXF_TASK_WORKDIR##*/}}
+    echo "copying database files to \${GXDB_TMP} (RAM-backed)"
+    mkdir -p \${GXDB_TMP}
+    cp -v ${gxdb}/all.gxi              \${GXDB_TMP}/
+    cp -v ${gxdb}/all.gxs              \${GXDB_TMP}/
+    cp -v ${gxdb}/all.meta.jsonl       \${GXDB_TMP}/
+    cp -v ${gxdb}/all.blast_div.tsv.gz \${GXDB_TMP}/
+    cp -v ${gxdb}/all.taxa.tsv         \${GXDB_TMP}/
+    echo 'done copying database files'
 
     cp `readlink ${assembly}` ${prefix}_copied_input.fasta
 
     python3 /app/bin/run_gx \\
         --fasta ${prefix}_copied_input.fasta \\
         --out-dir ./out \\
-        --gx-db /tmp/gxdb \\
+        --gx-db \${GXDB_TMP} \\
         --tax-id ${meta.taxid} \\
         --out-basename ${prefix}_${haplotype}.${meta.taxid} \\
         $args
+
+    rm -rf \${GXDB_TMP}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
